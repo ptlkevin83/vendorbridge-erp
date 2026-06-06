@@ -2282,6 +2282,45 @@
     }
 
     function sendEmailWithModal(to, subject, body) {
+      const web3Key = localStorage.getItem('vb_web3forms_key');
+      if (web3Key) {
+        showToast('Sending automated background email...', 'info');
+        
+        fetch('https://api.web3forms.com/submit', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json'
+          },
+          body: JSON.stringify({
+            access_key: web3Key,
+            subject: subject,
+            email: to,
+            from_name: 'VendorBridge ERP Portal',
+            message: body
+          })
+        })
+        .then(response => response.json())
+        .then(data => {
+          if (data.success) {
+            showToast(`Real email delivered successfully to ${to}!`, 'success');
+          } else {
+            console.error('Web3Forms error:', data);
+            showToast(`Background email failed: ${data.message || 'Unknown error'}. Opening dispatch window.`, 'warning');
+            openEmailDispatchModal(to, subject, body);
+          }
+        })
+        .catch(err => {
+          console.error('Network error sending email:', err);
+          showToast('Network error sending email. Opening manual compose window.', 'warning');
+          openEmailDispatchModal(to, subject, body);
+        });
+      } else {
+        openEmailDispatchModal(to, subject, body);
+      }
+    }
+
+    function openEmailDispatchModal(to, subject, body) {
       // Create modal if it doesn't exist
       let modal = document.getElementById('email-dispatch-modal');
       if (!modal) {
@@ -2307,13 +2346,13 @@
             </div>
             
             <p style="margin-bottom: 1rem; color: var(--text-muted); font-size: 0.85rem;">
-              This ERP runs in the browser. Select how you would like to send this email:
+              Select how you would like to send this email (Gmail compose opens directly in your browser without popup blockers):
             </p>
 
             <div style="display: flex; flex-direction: column; gap: 0.75rem; margin-bottom: 1.25rem;">
-              <button class="btn btn-primary" onclick="window.open('${gmailUrl}', '_blank'); closeModal('email-dispatch-modal');" style="justify-content: flex-start; text-align: left; padding: 0.75rem 1rem;">
+              <a class="btn btn-primary" href="${gmailUrl}" target="_blank" onclick="closeModal('email-dispatch-modal')" style="justify-content: flex-start; text-align: left; padding: 0.75rem 1rem; color: #fff; text-decoration: none;">
                 🌐 Send via Web Gmail (Opens in New Tab)
-              </button>
+              </a>
               <button class="btn btn-outline" onclick="window.location.href='${mailtoUrl}'; closeModal('email-dispatch-modal');" style="justify-content: flex-start; text-align: left; padding: 0.75rem 1rem;">
                 💻 Send via Device Mail App (mailto link)
               </button>
@@ -2322,9 +2361,9 @@
               </button>
             </div>
 
-            <div style="border-top: 1px solid var(--border-color); padding-top: 0.75rem; font-size: 0.8rem; color: var(--text-muted); display: flex; align-items: center; gap: 0.35rem;">
-              <span>ℹ️</span>
-              <span>This email is also logged in the **In-App Mailbox** under the recipient's account.</span>
+            <div style="border-top: 1px solid var(--border-color); padding-top: 0.75rem; font-size: 0.82rem; color: var(--text-muted); display: flex; align-items: center; gap: 0.35rem; line-height: 1.4;">
+              <span>💡</span>
+              <span>Tip: Go to **My Profile** and save a free **Web3Forms Key** to send 100% automated background emails!</span>
             </div>
           </div>
           <div class="modal-footer">
@@ -2344,6 +2383,18 @@
     }
 
     // Interactive Profile Modal
+    function saveEmailIntegrationKey() {
+      const keyVal = document.getElementById('profile-web3forms-key').value.trim();
+      if (keyVal) {
+        localStorage.setItem('vb_web3forms_key', keyVal);
+        showToast('Web3Forms Access Key saved! Automated background emails enabled.', 'success');
+      } else {
+        localStorage.removeItem('vb_web3forms_key');
+        showToast('Web3Forms Access Key removed. Manual compose fallback restored.', 'info');
+      }
+      closeModal('profile-modal-overlay');
+    }
+
     function showProfileModal() {
       const session = DB.get('vb_session');
       if (!session) return;
@@ -2363,7 +2414,7 @@
             <h3 class="modal-title">My Profile</h3>
             <button class="modal-close" onclick="closeModal('profile-modal-overlay')">&times;</button>
           </div>
-          <div class="modal-body">
+          <div class="modal-body" style="max-height: calc(90vh - 120px); overflow-y: auto;">
             <div style="display:flex; flex-direction:column; align-items:center; gap: 1rem; margin-bottom: 1.5rem;">
               <div class="sidebar-avatar" style="width: 80px; height: 80px; font-size: 2rem;">${getInitials(session.name)}</div>
               <h2 style="color: var(--primary-purple);">${session.name}</h2>
@@ -2377,6 +2428,18 @@
               <label class="form-label">Password Setup Hint</label>
               <input type="password" class="form-control" value="••••••••" disabled />
               <small class="text-muted">Contact system admin to reset or update your credentials.</small>
+            </div>
+            
+            <div style="border-top:1px solid var(--border-color); margin-top:1.5rem; padding-top:1.5rem;">
+              <h4 style="color:var(--primary-purple); margin-bottom:0.5rem; font-weight:700;">🔑 Background Email Integration</h4>
+              <p style="font-size:0.8rem; color:var(--text-muted); margin-bottom:1rem; line-height:1.4;">
+                Optional: Paste a free Web3Forms Access Key to automatically dispatch real emails in the background (no manual mail clients/popups). Register at <a href="https://web3forms.com/" target="_blank" class="auth-link" style="text-decoration:underline;">web3forms.com</a> to get a key.
+              </p>
+              <div class="form-group" style="margin-bottom:1rem;">
+                <label class="form-label">Web3Forms Access Key</label>
+                <input type="text" id="profile-web3forms-key" class="form-control" placeholder="e.g. 12345678-abcd-ef01-2345-6789abcdef01" value="${localStorage.getItem('vb_web3forms_key') || ''}" />
+              </div>
+              <button class="btn btn-primary btn-sm" onclick="saveEmailIntegrationKey()" style="width: 100%;">Save Integration Key</button>
             </div>
           </div>
           <div class="modal-footer">
