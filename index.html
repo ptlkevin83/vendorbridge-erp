@@ -1001,6 +1001,11 @@
       overflow: hidden;
     }
 
+    /* MAILBOX SYSTEM */
+    .email-list-item:hover {
+      background-color: #f1f3f5 !important;
+    }
+
     /* DYNAMIC FORMS STYLES */
     .form-row {
       display: grid;
@@ -1800,6 +1805,48 @@
           ];
           DB.set('vb_logs', logs);
         }
+
+        // Seed emails if empty
+        if (!DB.get('vb_emails')) {
+          const emails = [
+            {
+              id: 'email_seed1',
+              to: 'vendor@vendorbridge.com',
+              from: 'procurement@vendorbridge.com',
+              subject: 'Welcome to VendorBridge ERP - Registration Confirmed',
+              body: `Dear Rahul Patel,\n\nWelcome to VendorBridge ERP! Your vendor registration has been approved.\n\nYou can access your portal dashboard to view invited RFQs and submit quotation pricing.\n\nLogin Email: vendor@vendorbridge.com\nDefault Password: vendor123\n\nBest regards,\nVendorBridge Support Team`,
+              timestamp: '05 Jun 2026 09:00',
+              read: true
+            },
+            {
+              id: 'email_seed2',
+              to: 'vendor@vendorbridge.com',
+              from: 'procurement@vendorbridge.com',
+              subject: 'Invitation to Bid: Laptop Procurement Q3 (RFQ-2026-0001)',
+              body: `Dear Partner,\n\nYou have been invited to submit a quotation for the following RFQ:\nTitle: Laptop Procurement Q3\nRef No: RFQ-2026-0001\nDeadline: 20 Jun 2026\n\nPlease log in to the portal and submit your line item pricing before the deadline.\n\nBest regards,\nProcurement Department`,
+              timestamp: '06 Jun 2026 10:30',
+              read: false
+            }
+          ];
+          DB.set('vb_emails', emails);
+        }
+      },
+      sendEmail: (to, from, subject, body) => {
+        const emails = DB.get('vb_emails') || [];
+        const newEmail = {
+          id: 'email_' + Date.now() + '_' + Math.floor(Math.random() * 1000),
+          to: to,
+          from: from || 'system@vendorbridge.com',
+          subject: subject,
+          body: body,
+          timestamp: formatDateTime(new Date()),
+          read: false
+        };
+        emails.unshift(newEmail);
+        DB.set('vb_emails', emails);
+        
+        // Also log this in activity logs
+        DB.log(from || 'System', 'Email', `Sent email to ${to}: "${subject}"`);
       },
       log: (user, type, desc) => {
         const logs = DB.get('vb_logs') || [];
@@ -1942,6 +1989,9 @@
             return;
           }
           route.render(params);
+          if (session) {
+            updateMailboxBadge();
+          }
         } else {
           // Page not found or default
           Router.navigate('#/dashboard');
@@ -2044,6 +2094,11 @@
               <li class="sidebar-menu-item" data-route="#/dashboard">
                 <a class="sidebar-menu-link" onclick="Router.navigate('#/dashboard')">
                   <span class="sidebar-menu-icon">🏠</span> Dashboard
+                </a>
+              </li>
+              <li class="sidebar-menu-item" data-route="#/mailbox">
+                <a class="sidebar-menu-link" onclick="Router.navigate('#/mailbox')">
+                  <span class="sidebar-menu-icon">📧</span> Mailbox <span class="badge badge-danger d-none" id="sidebar-mail-unread" style="margin-left:auto; padding: 0.15rem 0.35rem; font-size: 0.7rem;">0</span>
                 </a>
               </li>
               ${isAdmin || isOfficer ? `
@@ -3311,6 +3366,9 @@
             
           document.getElementById('invite-text-copy').value = inviteText;
 
+          // Send in-app welcome email
+          DB.sendEmail(email, session.email, 'Welcome to VendorBridge ERP - Access Credentials', inviteText);
+
           // Set up email button
           const subject = encodeURIComponent("Welcome to VendorBridge ERP - Access Credentials");
           const body = encodeURIComponent(inviteText);
@@ -3823,6 +3881,26 @@
           DB.set('vb_rfqs', dbRfqs);
           DB.log(session.email, 'RFQ', `Updated RFQ: ${dbRfqs[idx].rfqNumber} — ${title}`);
           showToast(`RFQ ${dbRfqs[idx].rfqNumber} saved as ${statusType} successfully!`, 'success');
+          
+          if (statusType === 'Sent') {
+            // Send updated emails in-app
+            const vendors = DB.get('vb_vendors') || [];
+            invitedVendors.forEach(vid => {
+              const v = vendors.find(item => item.id === vid);
+              if (v && v.email) {
+                const mailBody = `Dear ${v.contactPerson},\n\nThis is an update regarding the RFQ you were invited to:\n\n` +
+                  `Title: ${title}\n` +
+                  `Ref No: ${dbRfqs[idx].rfqNumber}\n` +
+                  `Deadline: ${formatDate(deadlineVal)}\n` +
+                  `Description: ${desc || 'N/A'}\n\n` +
+                  `Please log in to the VendorBridge portal to review the updated details and submit/edit your quotation.\n\n` +
+                  `Best regards,\n` +
+                  `Procurement Department\n` +
+                  `VendorBridge ERP`;
+                DB.sendEmail(v.email, session.email, `RFQ Update: ${title} (${dbRfqs[idx].rfqNumber})`, mailBody);
+              }
+            });
+          }
         }
       } else {
         // Create Mode
@@ -3845,6 +3923,24 @@
         
         if (statusType === 'Sent') {
           showToast(`RFQ ${rfqNum} sent to ${invitedVendors.length} vendors successfully!`, 'success');
+          
+          // Send invite emails in-app
+          const vendors = DB.get('vb_vendors') || [];
+          invitedVendors.forEach(vid => {
+            const v = vendors.find(item => item.id === vid);
+            if (v && v.email) {
+              const mailBody = `Dear ${v.contactPerson},\n\nYou have been invited to submit a quotation for a new RFQ:\n\n` +
+                `Title: ${title}\n` +
+                `Ref No: ${rfqNum}\n` +
+                `Deadline: ${formatDate(deadlineVal)}\n` +
+                `Description: ${desc || 'N/A'}\n\n` +
+                `Please log in to the VendorBridge portal to view details and submit your quotation pricing.\n\n` +
+                `Best regards,\n` +
+                `Procurement Department\n` +
+                `VendorBridge ERP`;
+              DB.sendEmail(v.email, session.email, `Invitation to Bid: ${title} (${rfqNum})`, mailBody);
+            }
+          });
         } else {
           showToast(`RFQ ${rfqNum} saved as draft successfully!`, 'success');
         }
@@ -4776,6 +4872,20 @@
         DB.log(session.email, 'Approval', `Procurement Audit: ${actionType} for RFQ Award.`);
 
         showToast(`Request has been successfully ${actionType}d!`, actionType === 'Approve' ? 'success' : 'warning');
+
+        if (actionType === 'Reject') {
+          // Send rejection email to procurement officer
+          const rfqs = DB.get('vb_rfqs') || [];
+          const rfq = rfqs.find(r => r.id === approvalObj.rfqId);
+          const mailSubject = `RFQ Award Audit: Rejected - ${rfq ? rfq.rfqNumber : ''}`;
+          const mailBody = `Hello Procurement Team,\n\n` +
+            `This is to notify you that the procurement award for RFQ: ${rfq ? rfq.title : ''} (${rfq ? rfq.rfqNumber : ''}) has been Rejected by Manager ${session.name}.\n\n` +
+            `Remarks: ${remarksVal || 'No additional remarks.'}\n\n` +
+            `The RFQ status has been reset to Sent for potential rebidding or review.\n\n` +
+            `Best regards,\n` +
+            `System Audit Notifications`;
+          DB.sendEmail('officer@vendorbridge.com', session.email, mailSubject, mailBody);
+        }
         
         // If approved, offer to auto-generate PO
         if (actionType === 'Approve') {
@@ -4802,6 +4912,21 @@
           pos.push(newPO);
           DB.set('vb_pos', pos);
           DB.log(session.email, 'RFQ', `Auto-generated Confirmed Purchase Order: ${poNumber} for awarded vendor.`);
+
+          // Send PO notification email to vendor in-app
+          const vendors = DB.get('vb_vendors') || [];
+          const vendor = vendors.find(v => v.id === approvalObj.vendorId);
+          if (vendor) {
+            const body = `Dear ${vendor.contactPerson},\n\n` +
+              `We are pleased to inform you that your quotation has been approved and awarded for RFQ: ${poNumber}.\n\n` +
+              `Confirmed Purchase Order ${poNumber} has been generated.\n\n` +
+              `Total Amount: ${formatCurrency(total)} (Subtotal: ${formatCurrency(subtotal)} + GST 18%: ${formatCurrency(gst)})\n\n` +
+              `Please log in to the VendorBridge portal to confirm delivery schedule.\n\n` +
+              `Best regards,\n` +
+              `Procurement Department\n` +
+              `VendorBridge ERP`;
+            DB.sendEmail(vendor.email, 'officer@vendorbridge.com', `Purchase Order Confirmed: ${poNumber}`, body);
+          }
           showToast(`Purchase Order ${poNumber} generated successfully!`, 'info');
         }
 
@@ -5033,10 +5158,16 @@
       const vendor = vendors.find(v => v.id === po.vendorId);
       if (!vendor) return;
 
-      const subject = encodeURIComponent(`Purchase Order ${po.poNumber} from VendorBridge`);
-      const body = encodeURIComponent(`Hello ${vendor.contactPerson},\n\nPlease find attached Purchase Order Reference: ${po.poNumber} for the contract award.\n\nBest Regards,\nProcurement Team\nVendorBridge Inc.`);
+      const subject = `Purchase Order Confirmation ${po.poNumber}`;
+      const mailBody = `Hello ${vendor.contactPerson},\n\nPlease find attached Purchase Order Reference: ${po.poNumber} for the contract items.\n\nBest Regards,\nProcurement Team\nVendorBridge Inc.`;
       
-      window.location.href = `mailto:${vendor.email}?subject=${subject}&body=${body}`;
+      // Send in-app email
+      DB.sendEmail(vendor.email, DB.get('vb_session').email, subject, mailBody);
+      showToast(`Purchase Order email simulated in-app!`, 'success');
+      
+      const subjectEncoded = encodeURIComponent(subject);
+      const bodyEncoded = encodeURIComponent(mailBody);
+      window.location.href = `mailto:${vendor.email}?subject=${subjectEncoded}&body=${bodyEncoded}`;
     }
 
     Router.add('#/pos', renderPOs);
@@ -5243,10 +5374,16 @@
       const vendor = vendors.find(v => v.id === inv.vendorId);
       if (!vendor) return;
 
-      const subject = encodeURIComponent(`Invoice ${inv.invoiceNumber} from VendorBridge`);
-      const body = encodeURIComponent(`Hello ${vendor.contactPerson},\n\nPlease find attached Invoice Reference: ${inv.invoiceNumber} for the procurement services.\n\nBest Regards,\nBilling Department\nVendorBridge Inc.`);
+      const subject = `Invoice ${inv.invoiceNumber} from ${vendor.name}`;
+      const mailBody = `Hello Procurement Team,\n\nPlease find attached Invoice Reference: ${inv.invoiceNumber} for the contract items.\n\nBest Regards,\n${vendor.contactPerson}\n${vendor.name}`;
       
-      window.location.href = `mailto:${vendor.email}?subject=${subject}&body=${body}`;
+      // Send in-app email to procurement officer
+      DB.sendEmail('officer@vendorbridge.com', vendor.email, subject, mailBody);
+      showToast(`Invoice submission email simulated in-app!`, 'success');
+      
+      const subjectEncoded = encodeURIComponent(subject);
+      const bodyEncoded = encodeURIComponent(mailBody);
+      window.location.href = `mailto:officer@vendorbridge.com?subject=${subjectEncoded}&body=${bodyEncoded}`;
     }
 
     function emailRFQ(rfqId) {
@@ -5282,6 +5419,139 @@
 
     Router.add('#/invoices', renderInvoices);
     Router.add('#/invoices/view', renderInvoiceView);
+    Router.add('#/mailbox', renderMailbox);
+
+    // ----------------------------------------------------
+    // SCREEN 8B: IN-APP MAILBOX SIMULATION
+    // ----------------------------------------------------
+    function updateMailboxBadge() {
+      const session = DB.get('vb_session');
+      if (!session) return;
+      
+      const emails = DB.get('vb_emails') || [];
+      const userEmails = emails.filter(e => e.to.toLowerCase() === session.email.toLowerCase());
+      const unreadCount = userEmails.filter(e => !e.read).length;
+      
+      const badge = document.getElementById('sidebar-mail-unread');
+      if (badge) {
+        if (unreadCount > 0) {
+          badge.textContent = unreadCount;
+          badge.classList.remove('d-none');
+        } else {
+          badge.classList.add('d-none');
+        }
+      }
+    }
+
+    function selectEmail(emailId) {
+      const emails = DB.get('vb_emails') || [];
+      const idx = emails.findIndex(e => e.id === emailId);
+      if (idx === -1) return;
+
+      // Mark as read
+      emails[idx].read = true;
+      DB.set('vb_emails', emails);
+
+      // Re-update the unread badge in sidebar
+      updateMailboxBadge();
+
+      // Style selected item in left panel
+      const items = document.querySelectorAll('.email-list-item');
+      items.forEach(it => {
+        const id = it.getAttribute('data-email-id');
+        const originalEmail = emails.find(em => em.id === id);
+        if (id === emailId) {
+          it.style.backgroundColor = '#e2f0fe';
+          it.style.fontWeight = 'normal';
+          const indicator = it.querySelector('span[style*="background-color"]');
+          if (indicator) indicator.remove();
+        } else {
+          it.style.backgroundColor = originalEmail && originalEmail.read ? '#fff' : '#f0f7ff';
+          it.style.fontWeight = originalEmail && originalEmail.read ? 'normal' : '500';
+        }
+      });
+
+      // Render details on the right panel
+      const email = emails[idx];
+      const detailPane = document.getElementById('email-detail-pane');
+      detailPane.innerHTML = `
+        <div style="border-bottom: 1px solid var(--border-color); padding-bottom: 1.5rem; margin-bottom: 1.5rem;">
+          <h2 style="color:var(--primary-purple); margin-bottom:0.75rem; font-weight:700;">${email.subject}</h2>
+          <div style="display:flex; justify-content:space-between; font-size:0.85rem; flex-wrap:wrap; gap:0.5rem;">
+            <div>
+              <p><b>From:</b> ${email.from}</p>
+              <p><b>To:</b> ${email.to}</p>
+            </div>
+            <div style="text-align:right; color:var(--text-muted);">
+              <p>${email.timestamp}</p>
+            </div>
+          </div>
+        </div>
+        <div style="font-size:0.95rem; line-height:1.6; white-space:pre-line; color:#333; background-color:#fff; border:1px solid var(--border-color); border-radius:4px; padding:2rem; box-shadow:var(--shadow-sm); overflow-y:auto; max-height:calc(100% - 120px);">
+          ${email.body}
+        </div>
+      `;
+    }
+
+    function renderMailbox(params) {
+      const session = DB.get('vb_session');
+      if (!session) return;
+
+      const emails = DB.get('vb_emails') || [];
+      const userEmails = emails.filter(e => e.to.toLowerCase() === session.email.toLowerCase());
+
+      const html = `
+        <div class="card" style="margin-bottom:0; height: calc(100vh - 120px); display:flex; flex-direction:column; overflow:hidden;">
+          <div class="card-header" style="background-color: #f8f9fa; display:flex; justify-content:space-between; align-items:center; flex-shrink: 0;">
+            <h3 class="card-title" style="display:flex; align-items:center; gap: 0.5rem;">
+              <span>📧</span> In-App Mailbox (${session.email})
+            </h3>
+            <button class="btn btn-outline btn-sm" onclick="Router.navigate('#/dashboard')">← Back to Dashboard</button>
+          </div>
+          <div style="flex:1; display:flex; overflow:hidden;">
+            <!-- EMAIL LIST (LEFT SIDE) -->
+            <div style="width: 320px; border-right: 1px solid var(--border-color); display:flex; flex-direction:column; overflow-y:auto; background-color: #fff; flex-shrink: 0;">
+              ${userEmails.length === 0 ? `
+                <div style="padding:2rem; text-align:center; color:var(--text-muted);">
+                  <div style="font-size:2rem; margin-bottom:0.5rem; opacity:0.5;">📬</div>
+                  <p style="font-size:0.9rem;">Your inbox is empty.</p>
+                </div>
+              ` : userEmails.map(e => `
+                <div class="email-list-item ${e.read ? '' : 'unread'}" data-email-id="${e.id}" onclick="selectEmail('${e.id}')" style="padding:1rem; border-bottom:1px solid #eee; cursor:pointer; transition: background-color var(--transition-speed); position:relative; ${e.read ? '' : 'background-color: #f0f7ff; font-weight: 500;'}">
+                  <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.25rem;">
+                    <span style="font-size:0.72rem; color:var(--text-muted); font-weight:bold; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width: 170px;">${e.from}</span>
+                    <span style="font-size:0.68rem; color:var(--text-muted);">${e.timestamp.split(' ')[0] + ' ' + e.timestamp.split(' ')[1]}</span>
+                  </div>
+                  <div style="font-size:0.82rem; color:var(--text-dark); margin-bottom:0.25rem; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width: 280px;">
+                    ${e.subject}
+                  </div>
+                  <div style="font-size:0.72rem; color:var(--text-muted); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width: 280px;">
+                    ${e.body.replace(/\n/g, ' ')}
+                  </div>
+                  ${e.read ? '' : `
+                    <span style="position:absolute; right:10px; bottom:15px; width:8px; height:8px; background-color:#007bff; border-radius:50%;"></span>
+                  `}
+                </div>
+              `).join('')}
+            </div>
+
+            <!-- EMAIL DETAIL (RIGHT SIDE) -->
+            <div id="email-detail-pane" style="flex:1; padding:2rem; overflow-y:auto; display:flex; flex-direction:column; background-color: #fcfcfc;">
+              <div style="margin:auto; text-align:center; color:var(--text-muted);">
+                <div style="font-size:4rem; margin-bottom:1rem; opacity:0.3;">📧</div>
+                <h3>Select an email to read</h3>
+                <p>Welcome to your simulated inbox.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+
+      const root = document.getElementById('app-root');
+      root.innerHTML = getLayoutWrapper('Mailbox Inbox', html);
+      updateSidebarActive();
+      updateMailboxBadge();
+    }
 
     // ----------------------------------------------------
     // SCREEN 9: ACTIVITY LOGS & NOTIFICATIONS
