@@ -1646,13 +1646,21 @@
       get: (key) => JSON.parse(localStorage.getItem(key)),
       set: (key, val) => localStorage.setItem(key, JSON.stringify(val)),
       init: () => {
+        // Reset DB if old schema detected (contains Procurement Officer or Manager)
+        const oldUsers = DB.get('vb_users');
+        if (oldUsers && oldUsers.some(u => u.role === 'Procurement Officer' || u.role === 'Manager')) {
+          localStorage.clear();
+        }
+
         // Seed users if empty
         if (!DB.get('vb_users')) {
           const users = [
-            { id: 'u1', name: 'System Admin', email: 'admin@vendorbridge.com', password: 'admin123', role: 'Admin', status: 'Active', lastLogin: '06 Jun 2026 10:15' },
-            { id: 'u2', name: 'John Officer', email: 'officer@vendorbridge.com', password: 'officer123', role: 'Procurement Officer', status: 'Active', lastLogin: '06 Jun 2026 11:30' },
-            { id: 'u3', name: 'Rahul Patel', email: 'vendor@vendorbridge.com', password: 'vendor123', role: 'Vendor', status: 'Active', lastLogin: '06 Jun 2026 12:00' },
-            { id: 'u4', name: 'Sarah Manager', email: 'manager@vendorbridge.com', password: 'manager123', role: 'Manager', status: 'Active', lastLogin: '06 Jun 2026 13:45' }
+            { id: 'u1', name: 'Super Admin', email: 'admin@vendorbridge.com', password: 'admin123', role: 'Super Admin', status: 'Active', lastLogin: '06 Jun 2026 10:15' },
+            { id: 'u2', name: 'Alice Requester', email: 'requester@vendorbridge.com', password: 'requester123', role: 'Requester', status: 'Active', lastLogin: '06 Jun 2026 11:30' },
+            { id: 'u3', name: 'Bob Approver', email: 'approver@vendorbridge.com', password: 'approver123', role: 'Department Approver', status: 'Active', lastLogin: '06 Jun 2026 12:00' },
+            { id: 'u4', name: 'Charlie Buyer', email: 'buyer@vendorbridge.com', password: 'buyer123', role: 'Procurement Executive', status: 'Active', lastLogin: '06 Jun 2026 12:15' },
+            { id: 'u5', name: 'Rahul Patel', email: 'vendor@vendorbridge.com', password: 'vendor123', role: 'Vendor', status: 'Active', lastLogin: '06 Jun 2026 12:30' },
+            { id: 'u6', name: 'David Finance', email: 'finance@vendorbridge.com', password: 'finance123', role: 'Finance', status: 'Active', lastLogin: '06 Jun 2026 13:45' }
           ];
           DB.set('vb_users', users);
         }
@@ -1662,11 +1670,71 @@
           const vendors = [
             { id: 'v1', name: 'TechSupply Co.', category: 'IT', gst: '27AABCU9603R1ZX', contactPerson: 'Rahul Patel', phone: '9876543210', email: 'vendor@vendorbridge.com', address: 'Plot 45, Sector 12, Vashi, Navi Mumbai, MH 400703', status: 'Active', rating: 4.8 },
             { id: 'v2', name: 'Swift Logistics', category: 'Logistics', gst: '27AABCS1234F1ZX', contactPerson: 'Priya Shah', phone: '9820123456', email: 'priya@swiftlogistics.com', address: 'Warehouse C2, Kalamboli Logistics Park, Panvel, MH 410218', status: 'Active', rating: 4.2 },
-            { id: 'v3', name: 'Office Essentials', category: 'Services', gst: '27AABCO4321Q1ZX', contactPerson: 'Amit Kumar', phone: '9811223344', email: 'amit@officeessentials.com', address: '12, MG Road, Fort, Mumbai, MH 400001', status: 'Active', rating: 4.5 },
-            { id: 'v4', name: 'DataPro Systems', category: 'IT', gst: '27AABCD8888P1ZX', contactPerson: 'Sneha Joshi', phone: '9892098765', email: 'sneha@dataporosystems.com', address: 'TechHub Building, Phase 3, Hinjewadi, Pune, MH 411057', status: 'Active', rating: 4.6 },
-            { id: 'v5', name: 'BuildRight Corp', category: 'Manufacturing', gst: '27AABCB9999M1ZX', contactPerson: 'Vikram Singh', phone: '9833445566', email: 'vikram@buildright.com', address: 'MIDC Industrial Area, Phase 1, Dombivli, MH 421203', status: 'Inactive', rating: 3.5 }
+            { id: 'v3', name: 'Office Essentials', category: 'Services', gst: '27AABCO4321Q1ZX', contactPerson: 'Amit Kumar', phone: '9811223344', email: 'amit@officeessentials.com', address: '12, MG Road, Fort, Mumbai, MH 400001', status: 'Active', rating: 4.5 }
           ];
           DB.set('vb_vendors', vendors);
+        }
+
+        // Seed purchase requests if empty
+        if (!DB.get('vb_purchase_requests')) {
+          const purchaseRequests = [
+            {
+              id: 'pr1',
+              prNumber: 'PR-2026-0001',
+              title: 'Laptops for IT Department Upgrade',
+              description: 'Required for onboarding of Q3 software engineers.',
+              department: 'IT',
+              requestedBy: 'requester@vendorbridge.com',
+              items: [
+                { name: 'MacBook Pro 16" (M3, 16GB, 512GB)', qty: 10, unit: 'Units', estPrice: 150000 }
+              ],
+              status: 'Converted',
+              createdDate: '01 Jun 2026',
+              remarks: 'Approved by Bob Approver. Converted to RFQ.',
+              history: [
+                { action: 'Created', user: 'requester@vendorbridge.com', date: '01 Jun 2026', remarks: 'Raised request for new engineers.' },
+                { action: 'Approved', user: 'approver@vendorbridge.com', date: '02 Jun 2026', remarks: 'Budget approved.' },
+                { action: 'Converted', user: 'buyer@vendorbridge.com', date: '03 Jun 2026', remarks: 'Converted to RFQ-2026-0001' }
+              ]
+            },
+            {
+              id: 'pr2',
+              prNumber: 'PR-2026-0002',
+              title: 'Ergonomic Desks & Chairs',
+              description: 'New office workstations Setup.',
+              department: 'Operations',
+              requestedBy: 'requester@vendorbridge.com',
+              items: [
+                { name: 'Ergonomic Office Chair', qty: 30, unit: 'Units', estPrice: 8000 },
+                { name: 'Modular Desk', qty: 15, unit: 'Units', estPrice: 12000 }
+              ],
+              status: 'Pending Approval',
+              createdDate: '05 Jun 2026',
+              remarks: '',
+              history: [
+                { action: 'Created', user: 'requester@vendorbridge.com', date: '05 Jun 2026', remarks: 'Workstations setup' }
+              ]
+            },
+            {
+              id: 'pr3',
+              prNumber: 'PR-2026-0003',
+              title: 'High-End Datacenter Rack Server',
+              description: 'Needed for private cloud cluster upgrade.',
+              department: 'IT',
+              requestedBy: 'requester@vendorbridge.com',
+              items: [
+                { name: 'Rack Server 2U Dual Xeon', qty: 2, unit: 'Units', estPrice: 300000 }
+              ],
+              status: 'Approved',
+              createdDate: '04 Jun 2026',
+              remarks: 'Budget approved. Procurement can create RFQ.',
+              history: [
+                { action: 'Created', user: 'requester@vendorbridge.com', date: '04 Jun 2026', remarks: 'Server upgrade' },
+                { action: 'Approved', user: 'approver@vendorbridge.com', date: '04 Jun 2026', remarks: 'Approved' }
+              ]
+            }
+          ];
+          DB.set('vb_purchase_requests', purchaseRequests);
         }
 
         // Seed RFQs if empty
@@ -1675,45 +1743,17 @@
             {
               id: 'rfq1',
               rfqNumber: 'RFQ-2026-0001',
-              title: 'Laptop Procurement Q3',
-              description: 'Procurement of high performance development laptops for engineering team.',
+              prId: 'pr1',
+              title: 'Laptops for IT Department Upgrade',
+              description: 'Required for onboarding of Q3 software engineers.',
               deadline: '20 Jun 2026',
-              createdBy: 'officer@vendorbridge.com',
-              invitedVendors: ['v1', 'v4'],
+              createdBy: 'buyer@vendorbridge.com',
+              invitedVendors: ['v1', 'v3'],
               status: 'Quotations Received',
               items: [
-                { id: 'item1', name: 'Laptop L15 (i7, 16GB, 512GB SSD)', qty: 50, unit: 'Units', estPrice: 60000 }
+                { id: 'item1', name: 'MacBook Pro 16" (M3, 16GB, 512GB)', qty: 10, unit: 'Units', estPrice: 150000 }
               ],
               attachments: ['specification_sheet.pdf']
-            },
-            {
-              id: 'rfq2',
-              rfqNumber: 'RFQ-2026-0002',
-              title: 'Office Furniture',
-              description: 'Ergonomic chairs and modular workstations for the 3rd-floor expansion.',
-              deadline: '13 Jun 2026',
-              createdBy: 'officer@vendorbridge.com',
-              invitedVendors: ['v3'],
-              status: 'Sent',
-              items: [
-                { id: 'item2_1', name: 'Ergonomic Office Chair', qty: 30, unit: 'Units', estPrice: 8000 },
-                { id: 'item2_2', name: 'Modular Workstation Table', qty: 15, unit: 'Units', estPrice: 15000 }
-              ],
-              attachments: ['furniture_layout.dwg']
-            },
-            {
-              id: 'rfq3',
-              rfqNumber: 'RFQ-2026-0003',
-              title: 'Server Infrastructure',
-              description: 'Enterprise rack servers and switches upgrade for datacenter cluster.',
-              deadline: '09 Jun 2026',
-              createdBy: 'officer@vendorbridge.com',
-              invitedVendors: ['v1', 'v4'],
-              status: 'Under Review',
-              items: [
-                { id: 'item3', name: 'Rack Server 2U Dual Xeon', qty: 4, unit: 'Units', estPrice: 200000 }
-              ],
-              attachments: ['server_infrastructure_spec.pdf']
             }
           ];
           DB.set('vb_rfqs', rfqs);
@@ -1727,7 +1767,7 @@
               rfqId: 'rfq1',
               vendorId: 'v1',
               items: [
-                { itemId: 'item1', unitPrice: 45000, totalPrice: 2250000, deliveryDays: 10 }
+                { itemId: 'item1', unitPrice: 140000, totalPrice: 1400000, deliveryDays: 10 }
               ],
               notes: 'Quotation includes initial OS installation and warranty setup support.',
               terms: 'Standard net 30 days payment terms.',
@@ -1738,13 +1778,13 @@
             {
               id: 'q1_2',
               rfqId: 'rfq1',
-              vendorId: 'v4',
+              vendorId: 'v3',
               items: [
-                { itemId: 'item1', unitPrice: 42000, totalPrice: 2100000, deliveryDays: 20 }
+                { itemId: 'item1', unitPrice: 145000, totalPrice: 1450000, deliveryDays: 5 }
               ],
-              notes: 'Special bulk discount applied for IT hardware procurement.',
-              terms: 'Requires 10% advance payment, balance Net 30 days.',
-              validityDays: 45,
+              notes: 'Includes expedited shipping.',
+              terms: 'Standard net 30 days payment terms.',
+              validityDays: 30,
               status: 'Submitted',
               submittedAt: '06 Jun 2026 12:15'
             }
@@ -1760,11 +1800,22 @@
               poNumber: 'PO-2026-0001',
               rfqId: 'rfq1',
               vendorId: 'v1',
-              amount: 2250000,
-              gst: 405000,
-              total: 2655000,
+              amount: 1400000,
+              gst: 252000,
+              total: 1652000,
               createdDate: '06 Jun 2026',
-              status: 'Confirmed'
+              status: 'Pending Acceptance'
+            },
+            {
+              id: 'po2',
+              poNumber: 'PO-2026-0002',
+              rfqId: 'rfq1',
+              vendorId: 'v1',
+              amount: 500000,
+              gst: 90000,
+              total: 590000,
+              createdDate: '05 Jun 2026',
+              status: 'Invoice Uploaded'
             }
           ];
           DB.set('vb_pos', pos);
@@ -1775,15 +1826,17 @@
           const invoices = [
             {
               id: 'inv1',
-              invoiceNumber: 'INV-2026-001',
-              poId: 'po1',
+              invoiceNumber: 'INV-2026-0001',
+              poId: 'po2',
               vendorId: 'v1',
-              amount: 2250000,
-              gst: 405000,
-              total: 2655000,
-              createdDate: '06 Jun 2026',
-              dueDate: '06 Jul 2026',
-              status: 'Sent'
+              amount: 500000,
+              gst: 90000,
+              total: 590000,
+              createdDate: '05 Jun 2026',
+              dueDate: '05 Jul 2026',
+              status: 'Pending Verification',
+              invoiceFile: 'invoice_supplier_v1.pdf',
+              paymentTerms: 'Net 30'
             }
           ];
           DB.set('vb_invoices', invoices);
@@ -1792,16 +1845,11 @@
         // Seed Activity Logs if empty
         if (!DB.get('vb_logs')) {
           const logs = [
-            { id: 'log1', timestamp: '05 Jun 2026 09:30', user: 'admin@vendorbridge.com', type: 'System', actionDescription: 'VendorBridge ERP Database Initialized.' },
-            { id: 'log2', timestamp: '05 Jun 2026 10:15', user: 'admin@vendorbridge.com', type: 'User', actionDescription: 'Added User: Sarah Manager (Manager).' },
-            { id: 'log3', timestamp: '05 Jun 2026 10:30', user: 'admin@vendorbridge.com', type: 'Vendor', actionDescription: 'Added Vendor: TechSupply Co.' },
-            { id: 'log4', timestamp: '05 Jun 2026 11:00', user: 'officer@vendorbridge.com', type: 'RFQ', actionDescription: 'Created RFQ: Laptop Procurement Q3.' },
-            { id: 'log5', timestamp: '05 Jun 2026 11:15', user: 'officer@vendorbridge.com', type: 'RFQ', actionDescription: 'Invited TechSupply Co. and DataPro Systems to Laptop Procurement Q3.' },
-            { id: 'log6', timestamp: '06 Jun 2026 12:00', user: 'vendor@vendorbridge.com', type: 'Quotation', actionDescription: 'Submitted Quotation for Laptop Procurement Q3 (₹2,250,000).' },
-            { id: 'log7', timestamp: '06 Jun 2026 12:15', user: 'sneha@dataporosystems.com', type: 'Quotation', actionDescription: 'Submitted Quotation for Laptop Procurement Q3 (₹2,100,000).' },
-            { id: 'log8', timestamp: '06 Jun 2026 13:00', user: 'officer@vendorbridge.com', type: 'RFQ', actionDescription: 'Initiated approval flow for TechSupply Co. on Laptop Procurement Q3.' },
-            { id: 'log9', timestamp: '06 Jun 2026 14:00', user: 'manager@vendorbridge.com', type: 'Approval', actionDescription: 'Approved Purchase Order creation for Laptop Procurement Q3.' },
-            { id: 'log10', timestamp: '06 Jun 2026 14:10', user: 'officer@vendorbridge.com', type: 'Invoice', actionDescription: 'Generated Invoice INV-2026-001 from PO-2026-0001.' }
+            { id: 'log1', timestamp: '05 Jun 2026 09:30', user: 'admin@vendorbridge.com', type: 'System', actionDescription: 'VendorBridge ERP Database Overhauled for Hackathon P2P Flow.' },
+            { id: 'log2', timestamp: '05 Jun 2026 10:00', user: 'requester@vendorbridge.com', type: 'PR', actionDescription: 'Created Purchase Request PR-2026-0001: Laptops Upgrade.' },
+            { id: 'log3', timestamp: '05 Jun 2026 10:15', user: 'approver@vendorbridge.com', type: 'Approval', actionDescription: 'Approved Purchase Request PR-2026-0001.' },
+            { id: 'log4', timestamp: '05 Jun 2026 10:30', user: 'buyer@vendorbridge.com', type: 'RFQ', actionDescription: 'Converted PR-2026-0001 into RFQ-2026-0001.' },
+            { id: 'log5', timestamp: '06 Jun 2026 12:00', user: 'vendor@vendorbridge.com', type: 'Quotation', actionDescription: 'Vendor submitted quotation for RFQ-2026-0001.' }
           ];
           DB.set('vb_logs', logs);
         }
@@ -1814,18 +1862,9 @@
               to: 'vendor@vendorbridge.com',
               from: 'procurement@vendorbridge.com',
               subject: 'Welcome to VendorBridge ERP - Registration Confirmed',
-              body: `Dear Rahul Patel,\n\nWelcome to VendorBridge ERP! Your vendor registration has been approved.\n\nYou can access your portal dashboard to view invited RFQs and submit quotation pricing.\n\nLogin Email: vendor@vendorbridge.com\nDefault Password: vendor123\n\nBest regards,\nVendorBridge Support Team`,
+              body: `Dear Rahul Patel,\n\nWelcome to VendorBridge ERP! Your vendor registration has been approved.\n\nYou can access your portal dashboard to view invited RFQs, submit quotes, accept Purchase Orders, and upload invoices.\n\nLogin Email: vendor@vendorbridge.com\nDefault Password: vendor123\n\nBest regards,\nVendorBridge Support Team`,
               timestamp: '05 Jun 2026 09:00',
               read: true
-            },
-            {
-              id: 'email_seed2',
-              to: 'vendor@vendorbridge.com',
-              from: 'procurement@vendorbridge.com',
-              subject: 'Invitation to Bid: Laptop Procurement Q3 (RFQ-2026-0001)',
-              body: `Dear Partner,\n\nYou have been invited to submit a quotation for the following RFQ:\nTitle: Laptop Procurement Q3\nRef No: RFQ-2026-0001\nDeadline: 20 Jun 2026\n\nPlease log in to the portal and submit your line item pricing before the deadline.\n\nBest regards,\nProcurement Department`,
-              timestamp: '06 Jun 2026 10:30',
-              read: false
             }
           ];
           DB.set('vb_emails', emails);
@@ -2012,38 +2051,7 @@
     // We need 1 pending approval card for Laptop Procurement Q3
     // Under Review RFQ is RFq3 (Server Infrastructure).
     // Let's create an approval request if missing.
-    function checkApprovalsState() {
-      let rfqs = DB.get('vb_rfqs');
-      let quotations = DB.get('vb_quotations');
-      let approvals = DB.get('vb_approvals') || [];
-
-      // If vb_approvals is empty, seed it
-      if (approvals.length === 0) {
-        // Find quotations for rfq3 (Server Infrastructure) to show comparison, or for rfq1 (which is already PO'd).
-        // Let's seed a quotation comparison submission that's ready for Manager approval.
-        // Let's create an approval entry for Laptop Procurement Q3 if we want to show it.
-        // The prompt says: "Seed 1 pending approval for Laptop Procurement Q3"
-        // Let's see: Laptop Procurement Q3 is rfq1. Its PO-2026-0001 is already confirmed, but let's seed a pending approval object in vb_approvals
-        approvals = [
-          {
-            id: 'app1',
-            rfqId: 'rfq1',
-            vendorId: 'v1',
-            amount: 2250000,
-            submittedBy: 'John Officer',
-            submittedDate: '05 Jun 2026',
-            level: 2, // 1 is Officer, 2 is Manager
-            status: 'Pending', // Pending, Approved, Rejected
-            remarks: '',
-            history: [
-              { level: 1, action: 'Approved', user: 'officer@vendorbridge.com', remarks: 'Price is competitive and delivery timeline works best.', date: '05 Jun 2026' }
-            ]
-          }
-        ];
-        DB.set('vb_approvals', approvals);
-      }
-    }
-    checkApprovalsState();
+    function checkApprovalsState() {}
 
     // ----------------------------------------------------
     // BASE SHELL (SIDEBAR + NAVBAR WRAPPER)
@@ -2052,33 +2060,36 @@
       const session = DB.get('vb_session') || { name: 'Guest', role: 'None', email: '' };
       const initials = getInitials(session.name);
       
-      // Count pending approvals
+      // Count pending items based on role
       let pendingCount = 0;
-      if (session.role === 'Manager') {
-        const approvals = DB.get('vb_approvals') || [];
-        pendingCount = approvals.filter(a => a.status === 'Pending').length;
-      } else if (session.role === 'Procurement Officer') {
-        const rfqs = DB.get('vb_rfqs') || [];
-        pendingCount = rfqs.filter(r => r.status === 'Quotations Received').length;
+      if (session.role === 'Department Approver') {
+        const prs = DB.get('vb_purchase_requests') || [];
+        pendingCount = prs.filter(p => p.status === 'Pending Approval').length;
+      } else if (session.role === 'Procurement Executive') {
+        const prs = DB.get('vb_purchase_requests') || [];
+        pendingCount = prs.filter(p => p.status === 'Approved').length;
+      } else if (session.role === 'Finance') {
+        const invs = DB.get('vb_invoices') || [];
+        pendingCount = invs.filter(i => i.status === 'Pending Verification').length;
       } else if (session.role === 'Vendor') {
-        // Active RFQs invited to
         const rfqs = DB.get('vb_rfqs') || [];
-        const vendor = (DB.get('vb_vendors') || []).find(v => v.email === session.email);
+        const quotes = DB.get('vb_quotations') || [];
+        const vendors = DB.get('vb_vendors') || [];
+        const vendor = vendors.find(v => v.email === session.email);
         if (vendor) {
-          // Count draft/sent RFQs where they are invited but haven't submitted yet
-          const quotes = DB.get('vb_quotations') || [];
           pendingCount = rfqs.filter(r => 
-            (r.status === 'Sent' || r.status === 'Quotations Received') &&
             r.invitedVendors.includes(vendor.id) &&
             !quotes.some(q => q.rfqId === r.id && q.vendorId === vendor.id)
           ).length;
         }
       }
 
-      const isAdmin = session.role === 'Admin';
-      const isOfficer = session.role === 'Procurement Officer';
-      const isManager = session.role === 'Manager';
+      const isSuperAdmin = session.role === 'Super Admin';
+      const isRequester = session.role === 'Requester';
+      const isApprover = session.role === 'Department Approver';
+      const isExecutive = session.role === 'Procurement Executive';
       const isVendor = session.role === 'Vendor';
+      const isFinance = session.role === 'Finance';
 
       return `
         <div class="erp-container">
@@ -2105,66 +2116,110 @@
                   <span class="sidebar-menu-icon">📧</span> Mailbox <span class="badge badge-danger d-none" id="sidebar-mail-unread" style="margin-left:auto; padding: 0.15rem 0.35rem; font-size: 0.7rem;">0</span>
                 </a>
               </li>
-              ${isAdmin || isOfficer ? `
+              
+              <!-- Requester Links -->
+              ${isSuperAdmin || isRequester ? `
+                <li class="sidebar-menu-item" data-route="#/requests">
+                  <a class="sidebar-menu-link" onclick="Router.navigate('#/requests')">
+                    <span class="sidebar-menu-icon">📝</span> Purchase Requests
+                  </a>
+                </li>
+              ` : ''}
+
+              <!-- Approver Links -->
+              ${isSuperAdmin || isApprover ? `
+                <li class="sidebar-menu-item" data-route="#/approvals">
+                  <a class="sidebar-menu-link" onclick="Router.navigate('#/approvals')">
+                    <span class="sidebar-menu-icon">✅</span> PR Approvals
+                  </a>
+                </li>
+              ` : ''}
+
+              <!-- Procurement Executive Links -->
+              ${isSuperAdmin || isExecutive ? `
+                <li class="sidebar-menu-item" data-route="#/requests/convert">
+                  <a class="sidebar-menu-link" onclick="Router.navigate('#/requests/convert')">
+                    <span class="sidebar-menu-icon">🔄</span> Convert Requests
+                  </a>
+                </li>
                 <li class="sidebar-menu-item" data-route="#/vendors">
                   <a class="sidebar-menu-link" onclick="Router.navigate('#/vendors')">
                     <span class="sidebar-menu-icon">🏭</span> Vendors
                   </a>
                 </li>
-              ` : ''}
-              ${isAdmin || isOfficer || isVendor ? `
                 <li class="sidebar-menu-item" data-route="#/rfqs">
                   <a class="sidebar-menu-link" onclick="Router.navigate('#/rfqs')">
                     <span class="sidebar-menu-icon">📋</span> RFQs
                   </a>
                 </li>
-              ` : ''}
-              ${isAdmin || isOfficer || isVendor ? `
                 <li class="sidebar-menu-item" data-route="#/quotations">
                   <a class="sidebar-menu-link" onclick="Router.navigate('#/quotations')">
                     <span class="sidebar-menu-icon">💬</span> Quotations
                   </a>
                 </li>
-              ` : ''}
-              ${isAdmin || isManager ? `
-                <li class="sidebar-menu-item" data-route="#/approvals">
-                  <a class="sidebar-menu-link" onclick="Router.navigate('#/approvals')">
-                    <span class="sidebar-menu-icon">✅</span> Approvals
-                  </a>
-                </li>
-              ` : ''}
-              ${!isVendor ? `
                 <li class="sidebar-menu-item" data-route="#/pos">
                   <a class="sidebar-menu-link" onclick="Router.navigate('#/pos')">
                     <span class="sidebar-menu-icon">📦</span> Purchase Orders
                   </a>
                 </li>
-                <li class="sidebar-menu-item" data-route="#/invoices">
-                  <a class="sidebar-menu-link" onclick="Router.navigate('#/invoices')">
-                    <span class="sidebar-menu-icon">🧾</span> Invoices
+              ` : ''}
+
+              <!-- Vendor Links -->
+              ${isVendor ? `
+                <li class="sidebar-menu-item" data-route="#/rfqs">
+                  <a class="sidebar-menu-link" onclick="Router.navigate('#/rfqs')">
+                    <span class="sidebar-menu-icon">📋</span> My RFQs
                   </a>
                 </li>
-                <li class="sidebar-menu-item" data-route="#/analytics">
-                  <a class="sidebar-menu-link" onclick="Router.navigate('#/analytics')">
-                    <span class="sidebar-menu-icon">📊</span> Analytics
+                <li class="sidebar-menu-item" data-route="#/quotations">
+                  <a class="sidebar-menu-link" onclick="Router.navigate('#/quotations')">
+                    <span class="sidebar-menu-icon">💬</span> My Quotes
                   </a>
                 </li>
-              ` : `
                 <li class="sidebar-menu-item" data-route="#/pos">
                   <a class="sidebar-menu-link" onclick="Router.navigate('#/pos')">
                     <span class="sidebar-menu-icon">📦</span> My POs
                   </a>
                 </li>
-              `}
-              <li class="sidebar-menu-item" data-route="#/logs">
-                <a class="sidebar-menu-link" onclick="Router.navigate('#/logs')">
-                  <span class="sidebar-menu-icon">📝</span> Activity Logs
-                </a>
-              </li>
-              ${isAdmin ? `
+                <li class="sidebar-menu-item" data-route="#/invoices">
+                  <a class="sidebar-menu-link" onclick="Router.navigate('#/invoices')">
+                    <span class="sidebar-menu-icon">🧾</span> My Invoices
+                  </a>
+                </li>
+              ` : ''}
+
+              <!-- Finance Links -->
+              ${isSuperAdmin || isFinance ? `
+                <li class="sidebar-menu-item" data-route="#/invoices">
+                  <a class="sidebar-menu-link" onclick="Router.navigate('#/invoices')">
+                    <span class="sidebar-menu-icon">🧾</span> Invoices
+                  </a>
+                </li>
+              ` : ''}
+
+              <!-- Shared Admin/Finance/Buyer Link -->
+              ${isSuperAdmin || isExecutive || isFinance ? `
+                <li class="sidebar-menu-item" data-route="#/analytics">
+                  <a class="sidebar-menu-link" onclick="Router.navigate('#/analytics')">
+                    <span class="sidebar-menu-icon">📊</span> Reports & Analytics
+                  </a>
+                </li>
+              ` : ''}
+
+              <!-- Shared Logs Link (All except Vendor) -->
+              ${!isVendor ? `
+                <li class="sidebar-menu-item" data-route="#/logs">
+                  <a class="sidebar-menu-link" onclick="Router.navigate('#/logs')">
+                    <span class="sidebar-menu-icon">📝</span> Activity Logs
+                  </a>
+                </li>
+              ` : ''}
+
+              <!-- Super Admin Only Link -->
+              ${isSuperAdmin ? `
                 <li class="sidebar-menu-item" data-route="#/users">
                   <a class="sidebar-menu-link" onclick="Router.navigate('#/users')">
-                    <span class="sidebar-menu-icon">⚙️</span> Users
+                    <span class="sidebar-menu-icon">⚙️</span> User Settings
                   </a>
                 </li>
               ` : ''}
@@ -2814,9 +2869,11 @@
                 <div class="form-group">
                   <label class="form-label" for="signup-role">Account Type / Role <span class="required">*</span></label>
                   <select id="signup-role" class="form-control" required>
-                    <option value="Procurement Officer">Procurement Officer</option>
+                    <option value="Requester">Department Employee (Requester)</option>
+                    <option value="Department Approver">Department Head (Approver)</option>
+                    <option value="Procurement Executive">Procurement Executive (Buyer)</option>
                     <option value="Vendor">Vendor Partner</option>
-                    <option value="Manager">Manager</option>
+                    <option value="Finance">Finance Officer</option>
                   </select>
                 </div>
 
@@ -2927,7 +2984,7 @@
     }
 
     function handleForgotPassword() {
-      alert('Password Hint:\n- System Admin: admin123\n- Procurement Officer: officer123\n- Vendor Partner: vendor123\n- Approval Manager: manager123');
+      alert('Password Hint:\n- Super Admin: admin123\n- Requester: requester123\n- Department Approver: approver123\n- Procurement Executive: buyer123\n- Vendor: vendor123\n- Finance: finance123');
     }
 
     Router.add('#/login', renderLogin);
@@ -2941,196 +2998,254 @@
       const role = session.role;
       let html = '';
 
-      if (role === 'Vendor') {
-        // Find vendor details
-        const vendors = DB.get('vb_vendors') || [];
-        const vendor = vendors.find(v => v.email === session.email) || { id: 'none', name: 'N/A' };
-        
-        const rfqs = DB.get('vb_rfqs') || [];
-        const quotations = DB.get('vb_quotations') || [];
-        const pos = DB.get('vb_pos') || [];
+      const prs = DB.get('vb_purchase_requests') || [];
+      const rfqs = DB.get('vb_rfqs') || [];
+      const quotations = DB.get('vb_quotations') || [];
+      const pos = DB.get('vb_pos') || [];
+      const invoices = DB.get('vb_invoices') || [];
+      const vendors = DB.get('vb_vendors') || [];
+      const logs = DB.get('vb_logs') || [];
 
-        // Statistics
-        const activeQuotations = quotations.filter(q => q.vendorId === vendor.id).length;
-        const invitedRfqs = rfqs.filter(r => r.invitedVendors.includes(vendor.id)).length;
-        const approvedPos = pos.filter(p => p.vendorId === vendor.id && p.status === 'Confirmed').length;
-
-        // Fetch recent logs involving this vendor
-        const logs = (DB.get('vb_logs') || []).filter(l => l.user === session.email).slice(0, 5);
+      if (role === 'Requester') {
+        const myPrs = prs.filter(p => p.requestedBy === session.email);
+        const totalPrs = myPrs.length;
+        const pendingPrs = myPrs.filter(p => p.status === 'Pending Approval').length;
+        const approvedPrs = myPrs.filter(p => p.status === 'Approved' || p.status === 'Converted').length;
+        const rejectedPrs = myPrs.filter(p => p.status === 'Rejected').length;
 
         html = `
           <div class="stat-row">
             <div class="stat-card">
               <div class="stat-card-left">
-                <span class="stat-card-label">My active quotes</span>
-                <span class="stat-card-value">${activeQuotations}</span>
+                <span class="stat-card-label">My Total Requests</span>
+                <span class="stat-card-value">${totalPrs}</span>
               </div>
-              <div class="stat-card-icon icon-blue">💬</div>
+              <div class="stat-card-icon icon-purple">📝</div>
             </div>
             <div class="stat-card">
               <div class="stat-card-left">
-                <span class="stat-card-label">Invited RFQs</span>
-                <span class="stat-card-value">${invitedRfqs}</span>
+                <span class="stat-card-label">Pending Approval</span>
+                <span class="stat-card-value">${pendingPrs}</span>
               </div>
-              <div class="stat-card-icon icon-purple">📋</div>
+              <div class="stat-card-icon icon-orange">⏳</div>
             </div>
             <div class="stat-card">
               <div class="stat-card-left">
-                <span class="stat-card-label">Confirmed POs</span>
-                <span class="stat-card-value">${approvedPos}</span>
+                <span class="stat-card-label">Approved Requests</span>
+                <span class="stat-card-value">${approvedPrs}</span>
               </div>
-              <div class="stat-card-icon icon-green">📦</div>
+              <div class="stat-card-icon icon-green">✅</div>
             </div>
             <div class="stat-card">
               <div class="stat-card-left">
-                <span class="stat-card-label">Vendor Rating</span>
-                <span class="stat-card-value">${vendor.rating ? vendor.rating + ' ★' : '4.0 ★'}</span>
+                <span class="stat-card-label">Rejected Requests</span>
+                <span class="stat-card-value">${rejectedPrs}</span>
               </div>
-              <div class="stat-card-icon icon-orange">⭐</div>
+              <div class="stat-card-icon icon-purple" style="background-color:rgba(220, 53, 69, 0.1); color:var(--danger-red);">❌</div>
             </div>
           </div>
 
           <div class="dashboard-grid">
-            <div class="card">
+            <div class="card" style="grid-column: 1 / -1;">
               <div class="card-header">
-                <h3 class="card-title">Recent RFQ Invitations</h3>
-                <button class="btn btn-primary btn-sm" onclick="Router.navigate('#/rfqs')">View All</button>
+                <h3 class="card-title">My Recent Purchase Requests</h3>
+                <button class="btn btn-primary btn-sm" onclick="Router.navigate('#/requests')">+ Raise Request</button>
               </div>
               <div class="card-body">
                 <div class="table-responsive">
                   <table class="custom-table">
                     <thead>
                       <tr>
-                        <th>RFQ #</th>
+                        <th>PR #</th>
                         <th>Title</th>
-                        <th>Deadline</th>
+                        <th>Department</th>
+                        <th>Date Raised</th>
                         <th>Status</th>
-                        <th>Action</th>
+                        <th>Actions</th>
                       </tr>
                     </thead>
                     <tbody>
-                      ${rfqs.filter(r => r.invitedVendors.includes(vendor.id)).slice(0, 5).map(r => {
-                        const quoteSubmitted = quotations.some(q => q.rfqId === r.id && q.vendorId === vendor.id);
-                        return `
+                      ${myPrs.length === 0 ? '<tr><td colspan="6" class="text-center text-muted" style="padding: 2.5rem 0;">No purchase requests found.</td></tr>' : 
+                        myPrs.slice(-5).reverse().map(p => `
                           <tr>
-                            <td><b>${r.rfqNumber}</b></td>
-                            <td>${r.title}</td>
-                            <td>${r.deadline}</td>
-                            <td><span class="badge badge-info">${r.status}</span></td>
+                            <td><b>${p.prNumber}</b></td>
+                            <td>${p.title}</td>
+                            <td>${p.department}</td>
+                            <td>${p.createdDate}</td>
+                            <td><span class="badge ${
+                              p.status==='Draft'?'badge-secondary':
+                              p.status==='Pending Approval'?'badge-warning':
+                              p.status==='Approved'?'badge-success':
+                              p.status==='Converted'?'badge-info':'badge-danger'
+                            }">${p.status}</span></td>
                             <td class="actions-cell">
-                              ${quoteSubmitted ? 
-                                `<button class="btn btn-secondary btn-sm" onclick="Router.navigate('#/quotations')">Submitted</button>` :
-                                `<button class="btn btn-success btn-sm" onclick="submitQuotationForm('${r.id}')">Submit Quote</button>`
-                              }
+                              <button class="btn btn-outline btn-sm" onclick="Router.navigate('#/requests')">👁 View</button>
                             </td>
                           </tr>
-                        `;
-                      }).join('')}
+                        `).join('')
+                      }
                     </tbody>
                   </table>
                 </div>
               </div>
             </div>
-
-            <div class="card">
-              <div class="card-header">
-                <h3 class="card-title">My Recent Activity</h3>
-              </div>
-              <div class="card-body">
-                <ul style="list-style:none;">
-                  ${logs.length === 0 ? '<li class="text-muted text-center" style="padding: 2rem;">No recent activities logged.</li>' : 
-                    logs.map(l => `
-                      <li style="border-bottom:1px solid #eee; padding: 0.5rem 0; font-size: 0.85rem;">
-                        <span class="text-muted" style="font-size:0.75rem;">${l.timestamp}</span><br/>
-                        ${l.actionDescription}
-                      </li>
-                    `).join('')
-                  }
-                </ul>
-              </div>
-            </div>
           </div>
         `;
-      } else {
-        // ADMIN / OFFICER / MANAGER
-        const isAdmin = role === 'Admin';
-        const isOfficer = role === 'Procurement Officer';
-        const isManager = role === 'Manager';
-
-        const rfqs = DB.get('vb_rfqs') || [];
-        const approvals = DB.get('vb_approvals') || [];
-        const pos = DB.get('vb_pos') || [];
-        const vendors = DB.get('vb_vendors') || [];
-        const invoices = DB.get('vb_invoices') || [];
-
-        const totalRFQs = rfqs.length;
-        const pendingApprovals = approvals.filter(a => a.status === 'Pending').length;
-        const activePOs = pos.filter(p => p.status === 'Confirmed').length;
-        const totalVendors = vendors.length;
+      } 
+      else if (role === 'Department Approver') {
+        const pendingApprovals = prs.filter(p => p.status === 'Pending Approval');
+        const countPending = pendingApprovals.length;
+        const countApproved = prs.filter(p => p.status === 'Approved' || p.status === 'Converted').length;
+        const countRejected = prs.filter(p => p.status === 'Rejected').length;
 
         html = `
           <div class="stat-row">
             <div class="stat-card">
               <div class="stat-card-left">
-                <span class="stat-card-label">Total RFQs</span>
-                <span class="stat-card-value">${totalRFQs}</span>
-              </div>
-              <div class="stat-card-icon icon-blue">📋</div>
-            </div>
-            <div class="stat-card">
-              <div class="stat-card-left">
-                <span class="stat-card-label">Pending Approvals</span>
-                <span class="stat-card-value">${pendingApprovals}</span>
+                <span class="stat-card-label">Awaiting My Approval</span>
+                <span class="stat-card-value">${countPending}</span>
               </div>
               <div class="stat-card-icon icon-orange">⏳</div>
             </div>
             <div class="stat-card">
               <div class="stat-card-left">
+                <span class="stat-card-label">Total Approved</span>
+                <span class="stat-card-value">${countApproved}</span>
+              </div>
+              <div class="stat-card-icon icon-green">✅</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-card-left">
+                <span class="stat-card-label">Total Rejected</span>
+                <span class="stat-card-value">${countRejected}</span>
+              </div>
+              <div class="stat-card-icon icon-purple" style="background-color:rgba(220, 53, 69, 0.1); color:var(--danger-red);">❌</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-card-left">
+                <span class="stat-card-label">Overall Requests</span>
+                <span class="stat-card-value">${prs.length}</span>
+              </div>
+              <div class="stat-card-icon icon-blue">📋</div>
+            </div>
+          </div>
+
+          <div class="dashboard-grid">
+            <div class="card" style="grid-column: 1 / -1;">
+              <div class="card-header">
+                <h3 class="card-title">Pending Purchase Requests Queue</h3>
+                <button class="btn btn-primary btn-sm" onclick="Router.navigate('#/approvals')">Open Approvals Queue</button>
+              </div>
+              <div class="card-body">
+                <div class="table-responsive">
+                  <table class="custom-table">
+                    <thead>
+                      <tr>
+                        <th>PR #</th>
+                        <th>Title</th>
+                        <th>Requester</th>
+                        <th>Department</th>
+                        <th>Est. Cost</th>
+                        <th>Date Raised</th>
+                        <th>Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      ${pendingApprovals.length === 0 ? '<tr><td colspan="7" class="text-center text-muted" style="padding: 2.5rem 0;">All clear! No pending approval requests.</td></tr>' : 
+                        pendingApprovals.map(p => {
+                          const estTotal = p.items.reduce((sum, item) => sum + (item.qty * item.estPrice), 0);
+                          return `
+                            <tr>
+                              <td><b>${p.prNumber}</b></td>
+                              <td>${p.title}</td>
+                              <td>${p.requestedBy}</td>
+                              <td>${p.department}</td>
+                              <td><b>${formatCurrency(estTotal)}</b></td>
+                              <td>${p.createdDate}</td>
+                              <td class="actions-cell">
+                                <button class="btn btn-success btn-sm" onclick="Router.navigate('#/approvals')">Review PR</button>
+                              </td>
+                            </tr>
+                          `;
+                        }).join('')
+                      }
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </div>
+        `;
+      }
+      else if (role === 'Procurement Executive') {
+        const approvedPRs = prs.filter(p => p.status === 'Approved');
+        const activeRfqs = rfqs.filter(r => r.status === 'Sent' || r.status === 'Quotations Received');
+        const activePos = pos.filter(p => p.status === 'Pending Acceptance' || p.status === 'Accepted' || p.status === 'Invoice Uploaded');
+
+        html = `
+          <div class="stat-row">
+            <div class="stat-card">
+              <div class="stat-card-left">
+                <span class="stat-card-label">PRs Ready to Convert</span>
+                <span class="stat-card-value">${approvedPRs.length}</span>
+              </div>
+              <div class="stat-card-icon icon-purple">🔄</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-card-left">
+                <span class="stat-card-label">Active RFQs</span>
+                <span class="stat-card-value">${activeRfqs.length}</span>
+              </div>
+              <div class="stat-card-icon icon-blue">📋</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-card-left">
                 <span class="stat-card-label">Active POs</span>
-                <span class="stat-card-value">${activePOs}</span>
+                <span class="stat-card-value">${activePos.length}</span>
               </div>
               <div class="stat-card-icon icon-green">📦</div>
             </div>
             <div class="stat-card">
               <div class="stat-card-left">
                 <span class="stat-card-label">Total Vendors</span>
-                <span class="stat-card-value">${totalVendors}</span>
+                <span class="stat-card-value">${vendors.length}</span>
               </div>
-              <div class="stat-card-icon icon-purple">🏭</div>
+              <div class="stat-card-icon icon-orange">🏭</div>
             </div>
           </div>
 
           <div class="dashboard-grid">
             <div class="card">
               <div class="card-header">
-                <h3 class="card-title">Recent Requests for Quotation</h3>
-                <button class="btn btn-primary btn-sm" onclick="Router.navigate('#/rfqs')">View All</button>
+                <h3 class="card-title">Approved Purchase Requests</h3>
+                <button class="btn btn-primary btn-sm" onclick="Router.navigate('#/requests/convert')">Convert Queue</button>
               </div>
               <div class="card-body">
                 <div class="table-responsive">
                   <table class="custom-table">
                     <thead>
                       <tr>
-                        <th>RFQ #</th>
+                        <th>PR #</th>
                         <th>Title</th>
-                        <th>Deadline</th>
-                        <th>Status</th>
+                        <th>Dept</th>
+                        <th>Date</th>
+                        <th>Action</th>
                       </tr>
                     </thead>
                     <tbody>
-                      ${rfqs.slice(-5).reverse().map(r => `
-                        <tr>
-                          <td><b>${r.rfqNumber}</b></td>
-                          <td>${r.title}</td>
-                          <td>${r.deadline}</td>
-                          <td><span class="badge ${
-                            r.status==='Draft'?'badge-secondary':
-                            r.status==='Sent'?'badge-info':
-                            r.status==='Quotations Received'?'badge-warning':
-                            r.status==='Under Review'?'badge-warning':'badge-success'
-                          }">${r.status}</span></td>
-                        </tr>
-                      `).join('')}
+                      ${approvedPRs.length === 0 ? '<tr><td colspan="5" class="text-center text-muted" style="padding: 2.5rem 0;">No approved requests awaiting conversion.</td></tr>' : 
+                        approvedPRs.slice(0, 5).map(p => `
+                          <tr>
+                            <td><b>${p.prNumber}</b></td>
+                            <td>${p.title}</td>
+                            <td>${p.department}</td>
+                            <td>${p.createdDate}</td>
+                            <td>
+                              <button class="btn btn-primary btn-sm" onclick="Router.navigate('#/rfqs?convertPrId=${p.id}')">Convert to RFQ</button>
+                            </td>
+                          </tr>
+                        `).join('')
+                      }
                     </tbody>
                   </table>
                 </div>
@@ -3139,31 +3254,29 @@
 
             <div class="card">
               <div class="card-header">
-                <h3 class="card-title">Recent Invoices</h3>
-                <button class="btn btn-primary btn-sm" onclick="Router.navigate('#/invoices')">View All</button>
+                <h3 class="card-title">Active Purchase Orders</h3>
+                <button class="btn btn-primary btn-sm" onclick="Router.navigate('#/pos')">View All</button>
               </div>
               <div class="card-body">
                 <div class="table-responsive">
                   <table class="custom-table">
                     <thead>
                       <tr>
-                        <th>Invoice #</th>
+                        <th>PO #</th>
                         <th>Total</th>
                         <th>Status</th>
                       </tr>
                     </thead>
                     <tbody>
-                      ${invoices.slice(-5).reverse().map(i => `
-                        <tr>
-                          <td><b>${i.invoiceNumber}</b></td>
-                          <td>${formatCurrency(i.total)}</td>
-                          <td><span class="badge ${
-                            i.status==='Draft'?'badge-secondary':
-                            i.status==='Sent'?'badge-info':
-                            i.status==='Paid'?'badge-success':'badge-danger'
-                          }">${i.status}</span></td>
-                        </tr>
-                      `).join('')}
+                      ${activePos.length === 0 ? '<tr><td colspan="3" class="text-center text-muted" style="padding: 2.5rem 0;">No active purchase orders.</td></tr>' : 
+                        activePos.slice(0, 5).map(p => `
+                          <tr>
+                            <td><b>${p.poNumber}</b></td>
+                            <td>${formatCurrency(p.total)}</td>
+                            <td><span class="badge badge-info">${p.status}</span></td>
+                          </tr>
+                        `).join('')
+                      }
                     </tbody>
                   </table>
                 </div>
@@ -3173,14 +3286,308 @@
 
           <div class="quick-actions-row">
             <span class="quick-actions-title">Quick Actions:</span>
-            ${isAdmin || isOfficer ? `
-              <button class="btn btn-primary btn-sm" onclick="Router.navigate('#/rfqs?new=true')">+ New RFQ</button>
-              <button class="btn btn-outline btn-sm" onclick="Router.navigate('#/vendors?add=true')">+ Add Vendor</button>
-            ` : ''}
-            ${isAdmin || isManager ? `
-              <button class="btn btn-success btn-sm" onclick="Router.navigate('#/approvals')">View Approvals</button>
-            ` : ''}
-            <button class="btn btn-outline btn-sm" onclick="Router.navigate('#/analytics')">Generate Report</button>
+            <button class="btn btn-primary btn-sm" onclick="Router.navigate('#/requests/convert')">🔄 Convert Approved PRs</button>
+            <button class="btn btn-outline btn-sm" onclick="Router.navigate('#/rfqs')">📋 Manage RFQs</button>
+            <button class="btn btn-outline btn-sm" onclick="Router.navigate('#/vendors?add=true')">🏭 Add Vendor</button>
+          </div>
+        `;
+      }
+      else if (role === 'Vendor') {
+        const vendor = vendors.find(v => v.email === session.email) || { id: 'none', name: 'N/A', rating: 4.0 };
+        const myQuotations = quotations.filter(q => q.vendorId === vendor.id);
+        const myRfqs = rfqs.filter(r => r.invitedVendors.includes(vendor.id));
+        const myPos = pos.filter(p => p.vendorId === vendor.id);
+        const myInvoices = invoices.filter(i => i.vendorId === vendor.id);
+
+        const pendingQuotes = myRfqs.filter(r => !myQuotations.some(q => q.rfqId === r.id)).length;
+        const totalQuotes = myQuotations.length;
+        const pendingPos = myPos.filter(p => p.status === 'Pending Acceptance').length;
+        const unpaidInvoices = myInvoices.filter(i => i.status !== 'Paid').length;
+
+        html = `
+          <div class="stat-row">
+            <div class="stat-card">
+              <div class="stat-card-left">
+                <span class="stat-card-label">Pending Quotes</span>
+                <span class="stat-card-value">${pendingQuotes}</span>
+              </div>
+              <div class="stat-card-icon icon-orange">⏳</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-card-left">
+                <span class="stat-card-label">Submitted Quotes</span>
+                <span class="stat-card-value">${totalQuotes}</span>
+              </div>
+              <div class="stat-card-icon icon-blue">💬</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-card-left">
+                <span class="stat-card-label">POs to Accept</span>
+                <span class="stat-card-value">${pendingPos}</span>
+              </div>
+              <div class="stat-card-icon icon-purple">📦</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-card-left">
+                <span class="stat-card-label">Unpaid Invoices</span>
+                <span class="stat-card-value">${unpaidInvoices}</span>
+              </div>
+              <div class="stat-card-icon icon-green">🧾</div>
+            </div>
+          </div>
+
+          <div class="dashboard-grid">
+            <div class="card">
+              <div class="card-header">
+                <h3 class="card-title">Pending RFQ Invitations</h3>
+                <button class="btn btn-primary btn-sm" onclick="Router.navigate('#/rfqs')">View All</button>
+              </div>
+              <div class="card-body">
+                <div class="table-responsive">
+                  <table class="custom-table">
+                    <thead>
+                      <tr>
+                        <th>RFQ #</th>
+                        <th>Title</th>
+                        <th>Deadline</th>
+                        <th>Action</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      ${myRfqs.filter(r => !myQuotations.some(q => q.rfqId === r.id)).slice(0, 5).map(r => `
+                        <tr>
+                          <td><b>${r.rfqNumber}</b></td>
+                          <td>${r.title}</td>
+                          <td>${r.deadline}</td>
+                          <td>
+                            <button class="btn btn-success btn-sm" onclick="submitQuotationForm('${r.id}')">Submit Quote</button>
+                          </td>
+                        </tr>
+                      `).join('') || '<tr><td colspan="4" class="text-center text-muted" style="padding: 2.5rem 0;">No pending invitations.</td></tr>'}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+
+            <div class="card">
+              <div class="card-header">
+                <h3 class="card-title">Purchase Orders Awaiting Action</h3>
+                <button class="btn btn-primary btn-sm" onclick="Router.navigate('#/pos')">My POs</button>
+              </div>
+              <div class="card-body">
+                <div class="table-responsive">
+                  <table class="custom-table">
+                    <thead>
+                      <tr>
+                        <th>PO #</th>
+                        <th>Total</th>
+                        <th>Status</th>
+                        <th>Action</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      ${myPos.filter(p => p.status === 'Pending Acceptance' || p.status === 'Accepted').slice(0, 5).map(p => `
+                        <tr>
+                          <td><b>${p.poNumber}</b></td>
+                          <td>${formatCurrency(p.total)}</td>
+                          <td><span class="badge badge-warning">${p.status}</span></td>
+                          <td>
+                            <button class="btn btn-outline btn-sm" onclick="Router.navigate('#/pos/view?id=${p.id}')">View</button>
+                          </td>
+                        </tr>
+                      `).join('') || '<tr><td colspan="4" class="text-center text-muted" style="padding: 2.5rem 0;">No active PO action items.</td></tr>'}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </div>
+        `;
+      }
+      else if (role === 'Finance') {
+        const pendingVerifications = invoices.filter(i => i.status === 'Pending Verification');
+        const paidInvoices = invoices.filter(i => i.status === 'Paid');
+        const outstandingSum = pendingVerifications.reduce((sum, i) => sum + i.total, 0);
+        const paidSum = paidInvoices.reduce((sum, i) => sum + i.total, 0);
+
+        html = `
+          <div class="stat-row">
+            <div class="stat-card">
+              <div class="stat-card-left">
+                <span class="stat-card-label">Pending Verifications</span>
+                <span class="stat-card-value">${pendingVerifications.length}</span>
+              </div>
+              <div class="stat-card-icon icon-orange">⏳</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-card-left">
+                <span class="stat-card-label">Outstanding Invoiced</span>
+                <span class="stat-card-value">${formatCurrency(outstandingSum)}</span>
+              </div>
+              <div class="stat-card-icon icon-purple">💳</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-card-left">
+                <span class="stat-card-label">Verified Paid Invoices</span>
+                <span class="stat-card-value">${paidInvoices.length}</span>
+              </div>
+              <div class="stat-card-icon icon-green">✅</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-card-left">
+                <span class="stat-card-label">Total Released Funds</span>
+                <span class="stat-card-value">${formatCurrency(paidSum)}</span>
+              </div>
+              <div class="stat-card-icon icon-blue">💰</div>
+            </div>
+          </div>
+
+          <div class="dashboard-grid">
+            <div class="card" style="grid-column: 1 / -1;">
+              <div class="card-header">
+                <h3 class="card-title">Invoices Awaiting 3-Way Match Verification</h3>
+                <button class="btn btn-primary btn-sm" onclick="Router.navigate('#/invoices')">Invoice Registry</button>
+              </div>
+              <div class="card-body">
+                <div class="table-responsive">
+                  <table class="custom-table">
+                    <thead>
+                      <tr>
+                        <th>Invoice #</th>
+                        <th>PO Ref</th>
+                        <th>Vendor</th>
+                        <th>Total Value</th>
+                        <th>Date Received</th>
+                        <th>Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      ${pendingVerifications.length === 0 ? '<tr><td colspan="6" class="text-center text-muted" style="padding: 2.5rem 0;">No invoices pending verification.</td></tr>' : 
+                        pendingVerifications.map(i => {
+                          const poObj = pos.find(p => p.id === i.poId) || { poNumber: 'N/A' };
+                          const vendorObj = vendors.find(v => v.id === i.vendorId) || { name: 'N/A' };
+                          return `
+                            <tr>
+                              <td><b>${i.invoiceNumber}</b></td>
+                              <td>${poObj.poNumber}</td>
+                              <td>${vendorObj.name}</td>
+                              <td><b>${formatCurrency(i.total)}</b></td>
+                              <td>${i.createdDate}</td>
+                              <td class="actions-cell">
+                                <button class="btn btn-success btn-sm" onclick="Router.navigate('#/invoices/view?id=${i.id}')">Reconcile (3-Way Match)</button>
+                              </td>
+                            </tr>
+                          `;
+                        }).join('')
+                      }
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </div>
+        `;
+      }
+      else {
+        // SUPER ADMIN
+        const pendingApprovalsCount = prs.filter(p => p.status === 'Pending Approval').length;
+        const activeRfqsCount = rfqs.filter(r => r.status === 'Sent' || r.status === 'Quotations Received').length;
+        const activePosCount = pos.filter(p => p.status === 'Pending Acceptance' || p.status === 'Accepted').length;
+        const pendingInvsCount = invoices.filter(i => i.status === 'Pending Verification').length;
+
+        html = `
+          <div class="stat-row">
+            <div class="stat-card">
+              <div class="stat-card-left">
+                <span class="stat-card-label">Pending PR Approvals</span>
+                <span class="stat-card-value">${pendingApprovalsCount}</span>
+              </div>
+              <div class="stat-card-icon icon-orange">⏳</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-card-left">
+                <span class="stat-card-label">Active RFQs</span>
+                <span class="stat-card-value">${activeRfqsCount}</span>
+              </div>
+              <div class="stat-card-icon icon-blue">📋</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-card-left">
+                <span class="stat-card-label">POs awaiting Acceptance</span>
+                <span class="stat-card-value">${activePosCount}</span>
+              </div>
+              <div class="stat-card-icon icon-purple">📦</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-card-left">
+                <span class="stat-card-label">Invoices to Verify</span>
+                <span class="stat-card-value">${pendingInvsCount}</span>
+              </div>
+              <div class="stat-card-icon icon-green">🧾</div>
+            </div>
+          </div>
+
+          <div class="dashboard-grid">
+            <div class="card">
+              <div class="card-header">
+                <h3 class="card-title">Recent Purchase Requests</h3>
+                <button class="btn btn-primary btn-sm" onclick="Router.navigate('#/requests')">View All</button>
+              </div>
+              <div class="card-body">
+                <div class="table-responsive">
+                  <table class="custom-table">
+                    <thead>
+                      <tr>
+                        <th>PR #</th>
+                        <th>Title</th>
+                        <th>Department</th>
+                        <th>Status</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      ${prs.slice(-5).reverse().map(p => `
+                        <tr>
+                          <td><b>${p.prNumber}</b></td>
+                          <td>${p.title}</td>
+                          <td>${p.department}</td>
+                          <td><span class="badge ${
+                            p.status==='Draft'?'badge-secondary':
+                            p.status==='Pending Approval'?'badge-warning':
+                            p.status==='Approved'?'badge-success':
+                            p.status==='Converted'?'badge-info':'badge-danger'
+                          }">${p.status}</span></td>
+                        </tr>
+                      `).join('')}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+
+            <div class="card">
+              <div class="card-header">
+                <h3 class="card-title">System Activity Logs</h3>
+                <button class="btn btn-primary btn-sm" onclick="Router.navigate('#/logs')">View Logs</button>
+              </div>
+              <div class="card-body">
+                <ul style="list-style:none;">
+                  ${logs.slice(0, 5).map(l => `
+                    <li style="border-bottom:1px solid #eee; padding: 0.5rem 0; font-size: 0.85rem;">
+                      <span class="text-muted" style="font-size:0.75rem;">${l.timestamp}</span> - <b>${l.type}</b><br/>
+                      ${l.actionDescription}
+                    </li>
+                  `).join('')}
+                </ul>
+              </div>
+            </div>
+          </div>
+
+          <div class="quick-actions-row">
+            <span class="quick-actions-title">Quick Actions:</span>
+            <button class="btn btn-primary btn-sm" onclick="Router.navigate('#/requests')">+ New PR</button>
+            <button class="btn btn-outline btn-sm" onclick="Router.navigate('#/rfqs')">+ Manage RFQs</button>
+            <button class="btn btn-outline btn-sm" onclick="Router.navigate('#/users')">⚙️ Manage Users</button>
           </div>
         `;
       }
@@ -3189,14 +3596,6 @@
       root.innerHTML = getLayoutWrapper('Dashboard Overview', html);
       updateSidebarActive();
     }
-
-    Router.add('#/dashboard', renderDashboard);
-
-    // ----------------------------------------------------
-    // SCREEN 3: VENDOR MANAGEMENT
-    // ----------------------------------------------------
-    let vendorPagerInstance = null;
-
     function renderVendors(params) {
       const vendors = DB.get('vb_vendors') || [];
       const session = DB.get('vb_session');
@@ -3830,6 +4229,26 @@
       // Check query parameter trigger
       if (params && params.new === 'true') {
         showCreateRFQForm();
+      } else if (params && params.convertPrId) {
+        const prsList = DB.get('vb_purchase_requests') || [];
+        const pr = prsList.find(p => p.id === params.convertPrId);
+        if (pr) {
+          showCreateRFQForm();
+          document.getElementById('rfq-title').value = pr.title;
+          document.getElementById('rfq-desc').value = pr.description;
+          
+          // Clear current dynamic rows
+          const rowsContainer = document.getElementById('rfq-items-rows');
+          if (rowsContainer) {
+            rowsContainer.innerHTML = '';
+            // Add items from PR
+            pr.items.forEach(it => {
+              addRFQItemRow(it);
+            });
+          }
+          // Store PR ID in form so we can mark it as Converted when RFQ is sent
+          document.getElementById('rfq-form').setAttribute('data-convert-pr-id', pr.id);
+        }
       }
     }
 
@@ -4048,6 +4467,25 @@
         dbRfqs.push(newRfq);
         DB.set('vb_rfqs', dbRfqs);
         DB.log(session.email, 'RFQ', `Created RFQ: ${rfqNum} — ${title} (${statusType})`);
+        
+        // Check if there was a converted PR
+        const convertPrId = document.getElementById('rfq-form').getAttribute('data-convert-pr-id');
+        if (convertPrId) {
+          const prsList = DB.get('vb_purchase_requests') || [];
+          const prIdx = prsList.findIndex(p => p.id === convertPrId);
+          if (prIdx !== -1) {
+            prsList[prIdx].status = 'Converted';
+            prsList[prIdx].history.push({
+              action: 'Converted',
+              user: session.email,
+              date: formatDate(new Date()),
+              remarks: `Converted to RFQ ${rfqNum}`
+            });
+            DB.set('vb_purchase_requests', prsList);
+            DB.log(session.email, 'PR Convert', `Purchase Request ${prsList[prIdx].prNumber} converted to RFQ ${rfqNum}.`);
+          }
+          document.getElementById('rfq-form').removeAttribute('data-convert-pr-id');
+        }
         
         if (statusType === 'Sent') {
           showToast(`RFQ ${rfqNum} sent to ${invitedVendors.length} vendors successfully!`, 'success');
@@ -4786,49 +5224,54 @@
       if (!rfq) return;
 
       const vendors = DB.get('vb_vendors') || [];
-      const vendor = vendors.find(v => v.id === vendorId) || { name: 'Unknown' };
+      const vendor = vendors.find(v => v.id === vendorId) || { name: 'Unknown', contactPerson: 'N/A', email: 'N/A' };
 
-      if (confirm(`Do you want to award the contract to "${vendor.name}" for ${formatCurrency(amount)} and initiate Manager Approval Workflow?`)) {
-        // Update RFQ status to Under Review
-        rfq.status = 'Under Review';
+      if (confirm(`Do you want to award the contract to "${vendor.name}" for ${formatCurrency(amount)}? This will instantly generate the Purchase Order.`)) {
+        // Update RFQ status to Awarded
+        rfq.status = 'Awarded';
         DB.set('vb_rfqs', rfqs);
 
-        // Add Approval record
-        const approvals = DB.get('vb_approvals') || [];
-        const newApproval = {
-          id: 'app_' + Date.now(),
+        // Generate PO in Pending Vendor Acceptance status
+        const pos = DB.get('vb_pos') || [];
+        const poId = 'po_' + Date.now();
+        const poNumber = 'PO-2026-' + String(pos.length + 1).padStart(4, '0');
+        const subtotal = Number(amount);
+        const gst = Math.round(subtotal * 0.18);
+        const total = subtotal + gst;
+
+        const newPO = {
+          id: poId,
+          poNumber,
           rfqId: rfq.id,
-          vendorId,
-          amount,
-          submittedBy: session.name,
-          submittedDate: formatDate(new Date()),
-          level: 2, // Pending level 2 Manager Approval
-          status: 'Pending',
-          remarks: '',
-          history: [
-            { level: 1, action: 'Approved', user: session.email, remarks: 'Initiated approval from Quotation Comparison Matrix recommendations.', date: formatDate(new Date()) }
-          ]
+          vendorId: vendor.id,
+          amount: subtotal,
+          gst,
+          total,
+          createdDate: formatDate(new Date()),
+          status: 'Pending Acceptance'
         };
 
-        approvals.push(newApproval);
-        DB.set('vb_approvals', approvals);
+        pos.push(newPO);
+        DB.set('vb_pos', pos);
 
-        DB.log(session.email, 'Approval', `Initiated Procurement Approval Workflow for RFQ: ${rfq.rfqNumber} awarding to ${vendor.name}.`);
-        showToast('Approval workflow initiated successfully! Sent to Manager.', 'success');
-        Router.navigate('#/rfqs');
+        DB.log(session.email, 'RFQ', `Awarded RFQ ${rfq.rfqNumber} to ${vendor.name}. PO ${poNumber} generated in Pending Acceptance.`);
+
+        // Send email to vendor in-app
+        const subject = `Purchase Order Issued: ${poNumber}`;
+        const body = `Dear ${vendor.contactPerson},\n\nWe are pleased to inform you that your quotation has been accepted and awarded for RFQ Reference: ${rfq.rfqNumber}.\n\nPurchase Order ${poNumber} has been generated in your portal.\n\nPlease log in to the VendorBridge portal to review and accept the Purchase Order.\n\nBest regards,\nProcurement Department\nVendorBridge ERP`;
+        DB.sendEmail(vendor.email, session.email, subject, body);
+
+        // Send actual email via modal
+        sendEmailWithModal(vendor.email, subject, body);
+
+        showToast(`Purchase Order ${poNumber} has been generated successfully!`, 'success');
+        Router.navigate('#/pos');
       }
     }
 
-    Router.add('#/rfqs/compare', renderQuotationComparison);
-
-    // ----------------------------------------------------
-    // SCREEN 7: APPROVAL WORKFLOW
-    // ----------------------------------------------------
     function renderApprovals() {
       const session = DB.get('vb_session');
-      const approvals = DB.get('vb_approvals') || [];
-      const rfqs = DB.get('vb_rfqs') || [];
-      const vendors = DB.get('vb_vendors') || [];
+      const prs = DB.get('vb_purchase_requests') || [];
 
       // Filter based on active tab
       let activeTab = 'pending';
@@ -4840,9 +5283,9 @@
 
         let filtered = [];
         if (tab === 'pending') {
-          filtered = approvals.filter(a => a.status === 'Pending');
+          filtered = prs.filter(p => p.status === 'Pending Approval');
         } else {
-          filtered = approvals.filter(a => a.status === 'Approved' || a.status === 'Rejected');
+          filtered = prs.filter(p => p.status === 'Approved' || p.status === 'Rejected' || p.status === 'Converted');
         }
 
         if (filtered.length === 0) {
@@ -4858,39 +5301,62 @@
         if (tab === 'pending') {
           container.innerHTML = `
             <div class="approval-grid">
-              ${filtered.map(a => {
-                const rfq = rfqs.find(r => r.id === a.rfqId) || { title: 'Unknown RFQ', rfqNumber: 'N/A' };
-                const vendor = vendors.find(v => v.id === a.vendorId) || { name: 'Unknown Vendor' };
+              ${filtered.map(p => {
+                const estTotal = p.items.reduce((sum, item) => sum + (item.qty * item.estPrice), 0);
                 return `
-                  <div class="approval-card" id="card-${a.id}">
+                  <div class="approval-card" id="card-${p.id}">
                     <div class="approval-card-header">
-                      <h4 style="font-weight:700; color:var(--primary-purple);">📋 ${rfq.title}</h4>
-                      <span class="badge badge-warning">${a.status}</span>
+                      <h4 style="font-weight:700; color:var(--primary-purple);">📋 PR: ${p.title}</h4>
+                      <span class="badge badge-warning">${p.status}</span>
                     </div>
                     <div class="approval-card-body">
                       <div class="approval-meta">
-                        <span><b>Vendor:</b> ${vendor.name}</span>
-                        <span><b>Quoted Cost:</b> ${formatCurrency(a.amount)}</span>
-                        <span><b>Submitted By:</b> ${a.submittedBy} on ${a.submittedDate}</span>
+                        <span><b>PR Number:</b> ${p.prNumber}</span>
+                        <span><b>Department:</b> ${p.department}</span>
+                        <span><b>Est. Total Cost:</b> ${formatCurrency(estTotal)}</span>
+                        <span><b>Requested By:</b> ${p.requestedBy} on ${p.createdDate}</span>
+                      </div>
+
+                      <div style="margin: 1rem 0; border: 1px solid var(--border-color); border-radius: 4px; overflow: hidden;">
+                        <table class="custom-table" style="font-size:0.8rem;">
+                          <thead>
+                            <tr style="background:#f8f9fa;">
+                              <th style="padding: 0.5rem;">Item Description</th>
+                              <th style="padding: 0.5rem; text-align:center;">Qty</th>
+                              <th style="padding: 0.5rem; text-align:right;">Est. Rate</th>
+                              <th style="padding: 0.5rem; text-align:right;">Total</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            ${p.items.map(it => `
+                              <tr>
+                                <td style="padding: 0.5rem;">${it.name}</td>
+                                <td style="padding: 0.5rem; text-align:center;">${it.qty}</td>
+                                <td style="padding: 0.5rem; text-align:right;">${formatCurrency(it.estPrice)}</td>
+                                <td style="padding: 0.5rem; text-align:right;"><b>${formatCurrency(it.qty * it.estPrice)}</b></td>
+                              </tr>
+                            `).join('')}
+                          </tbody>
+                        </table>
                       </div>
                       
-                      <div class="approval-timeline">
+                      <div class="approval-timeline" style="margin-bottom:1rem;">
                         <div class="timeline-step approved">
                           <span class="timeline-dot"></span>
-                          <b>Level 1 (Procurement Officer)</b> — Approved
+                          <b>Level 1 (Requester Raise)</b> — Completed
                         </div>
                         <div class="timeline-step pending">
                           <span class="timeline-dot"></span>
-                          <b>Level 2 (Manager Approval)</b> — Pending <b>← YOU ARE HERE</b>
+                          <b>Level 2 (Department Head Review)</b> — Pending <b>← YOU ARE HERE</b>
                         </div>
                       </div>
 
-                      <label class="form-label">Review Remarks / Auditing Notes <span class="required" id="remarks-required-${a.id}" style="display:none;">*</span></label>
-                      <textarea id="remarks-${a.id}" class="approval-remarks-input" placeholder="Enter review feedback, details..."></textarea>
+                      <label class="form-label">Review Remarks / Auditing Notes <span class="required" id="remarks-required-${p.id}" style="display:none;">*</span></label>
+                      <textarea id="remarks-${p.id}" class="approval-remarks-input" placeholder="Enter audit review remarks..."></textarea>
                     </div>
                     <div class="approval-card-footer">
-                      <button class="btn btn-danger" onclick="processApprovalAction('${a.id}', 'Reject')">❌ Reject</button>
-                      <button class="btn btn-success" onclick="processApprovalAction('${a.id}', 'Approve')">✅ Approve</button>
+                      <button class="btn btn-danger" onclick="processPRApprovalAction('${p.id}', 'Reject')">❌ Reject</button>
+                      <button class="btn btn-success" onclick="processPRApprovalAction('${p.id}', 'Approve')">✅ Approve PR</button>
                     </div>
                   </div>
                 `;
@@ -4904,29 +5370,31 @@
               <table class="custom-table">
                 <thead>
                   <tr>
-                    <th>RFQ Ref</th>
-                    <th>Vendor</th>
-                    <th>Quoted Value</th>
-                    <th>Submitted By</th>
-                    <th>Action</th>
-                    <th>Manager Remarks</th>
-                    <th>Audit Status</th>
+                    <th>PR Ref</th>
+                    <th>Title</th>
+                    <th>Dept</th>
+                    <th>Est. Value</th>
+                    <th>Requested By</th>
+                    <th>Actioned Date</th>
+                    <th>Audit Remarks</th>
+                    <th>Status</th>
                   </tr>
                 </thead>
                 <tbody>
-                  ${filtered.map(a => {
-                    const rfq = rfqs.find(r => r.id === a.rfqId) || { rfqNumber: 'N/A' };
-                    const vendor = vendors.find(v => v.id === a.vendorId) || { name: 'N/A' };
+                  ${filtered.map(p => {
+                    const estTotal = p.items.reduce((sum, item) => sum + (item.qty * item.estPrice), 0);
+                    const lastHistory = p.history[p.history.length - 1] || { date: 'N/A', remarks: 'N/A' };
                     return `
                       <tr>
-                        <td><b>${rfq.rfqNumber}</b></td>
-                        <td>${vendor.name}</td>
-                        <td><b>${formatCurrency(a.amount)}</b></td>
-                        <td>${a.submittedBy}</td>
-                        <td>${a.status === 'Approved' ? '✅ Approved' : '❌ Rejected'}</td>
-                        <td><i>${a.remarks || 'No remarks provided.'}</i></td>
+                        <td><b>${p.prNumber}</b></td>
+                        <td>${p.title}</td>
+                        <td>${p.department}</td>
+                        <td><b>${formatCurrency(estTotal)}</b></td>
+                        <td>${p.requestedBy}</td>
+                        <td>${lastHistory.date}</td>
+                        <td><i>${p.remarks || 'No remarks provided.'}</i></td>
                         <td>
-                          <span class="badge ${a.status === 'Approved' ? 'badge-success' : 'badge-danger'}">${a.status}</span>
+                          <span class="badge ${p.status === 'Approved' || p.status === 'Converted' ? 'badge-success' : 'badge-danger'}">${p.status}</span>
                         </td>
                       </tr>
                     `;
@@ -4940,20 +5408,18 @@
 
       const html = `
         <div class="tabs-nav">
-          <button class="tab-btn active" id="tab-pending" onclick="toggleApprovalTabs('pending')">Pending Approvals</button>
+          <button class="tab-btn active" id="tab-pending" onclick="toggleApprovalTabs('pending')">Pending PR Approvals</button>
           <button class="tab-btn" id="tab-history" onclick="toggleApprovalTabs('history')">Approval History</button>
         </div>
         <div id="approvals-tab-content"></div>
       `;
 
       const root = document.getElementById('app-root');
-      root.innerHTML = getLayoutWrapper('Audit Approvals', html);
+      root.innerHTML = getLayoutWrapper('Purchase Request Approvals Queue', html);
       updateSidebarActive();
 
-      // Default load pending
       renderTabContent('pending');
 
-      // Bind tab toggles
       window.toggleApprovalTabs = (tab) => {
         document.getElementById('tab-pending').classList.toggle('active', tab === 'pending');
         document.getElementById('tab-history').classList.toggle('active', tab === 'history');
@@ -4961,112 +5427,53 @@
       };
     }
 
-    function processApprovalAction(approvalId, actionType) {
+    function processPRApprovalAction(prId, actionType) {
       const session = DB.get('vb_session');
-      const approvals = DB.get('vb_approvals') || [];
-      const appIndex = approvals.findIndex(a => a.id === approvalId);
-      if (appIndex === -1) return;
+      const prs = DB.get('vb_purchase_requests') || [];
+      const prIdx = prs.findIndex(p => p.id === prId);
+      if (prIdx === -1) return;
 
-      const remarksVal = document.getElementById(`remarks-${approvalId}`).value.trim();
-      const reqIndicator = document.getElementById(`remarks-required-${approvalId}`);
+      const remarksVal = document.getElementById(`remarks-${prId}`).value.trim();
+      const reqIndicator = document.getElementById(`remarks-required-${prId}`);
 
       if (actionType === 'Reject' && !remarksVal) {
         reqIndicator.style.display = 'inline';
-        showToast('Review Remarks are strictly required for rejection.', 'error');
+        showToast('Remarks are required to reject a Purchase Request.', 'error');
         return;
       }
 
-      if (confirm(`Are you sure you want to ${actionType} this procurement request?`)) {
-        const approvalObj = approvals[appIndex];
-        approvalObj.status = actionType === 'Approve' ? 'Approved' : 'Rejected';
-        approvalObj.remarks = remarksVal;
-        approvalObj.history.push({
-          level: 2,
+      if (confirm(`Are you sure you want to ${actionType} this Purchase Request?`)) {
+        const pr = prs[prIdx];
+        pr.status = actionType === 'Approve' ? 'Approved' : 'Rejected';
+        pr.remarks = remarksVal;
+        pr.history.push({
           action: actionType === 'Approve' ? 'Approved' : 'Rejected',
           user: session.email,
-          remarks: remarksVal,
-          date: formatDate(new Date())
+          date: formatDate(new Date()),
+          remarks: remarksVal
         });
 
-        // Update RFQ status
-        const rfqs = DB.get('vb_rfqs') || [];
-        const rfqIdx = rfqs.findIndex(r => r.id === approvalObj.rfqId);
-        if (rfqIdx !== -1) {
-          rfqs[rfqIdx].status = actionType === 'Approve' ? 'Closed' : 'Sent'; // Revert back to sent if rejected for rebidding
-          DB.set('vb_rfqs', rfqs);
-        }
+        DB.set('vb_purchase_requests', prs);
+        DB.log(session.email, 'PR Approval', `Purchase Request ${pr.prNumber} ${actionType}d by Department Head.`);
 
-        DB.set('vb_approvals', approvals);
-        DB.log(session.email, 'Approval', `Procurement Audit: ${actionType} for RFQ Award.`);
+        showToast(`Purchase Request ${pr.prNumber} has been ${actionType}d!`, actionType === 'Approve' ? 'success' : 'warning');
 
-        showToast(`Request has been successfully ${actionType}d!`, actionType === 'Approve' ? 'success' : 'warning');
-
-        if (actionType === 'Reject') {
-          // Send rejection email to procurement officer
-          const rfqs = DB.get('vb_rfqs') || [];
-          const rfq = rfqs.find(r => r.id === approvalObj.rfqId);
-          const mailSubject = `RFQ Award Audit: Rejected - ${rfq ? rfq.rfqNumber : ''}`;
-          const mailBody = `Hello Procurement Team,\n\n` +
-            `This is to notify you that the procurement award for RFQ: ${rfq ? rfq.title : ''} (${rfq ? rfq.rfqNumber : ''}) has been Rejected by Manager ${session.name}.\n\n` +
-            `Remarks: ${remarksVal || 'No additional remarks.'}\n\n` +
-            `The RFQ status has been reset to Sent for potential rebidding or review.\n\n` +
-            `Best regards,\n` +
-            `System Audit Notifications`;
-          DB.sendEmail('officer@vendorbridge.com', session.email, mailSubject, mailBody);
-        }
-        
-        // If approved, offer to auto-generate PO
+        // Send Email notification in-app
         if (actionType === 'Approve') {
-          // Generate PO automatically in draft
-          const pos = DB.get('vb_pos') || [];
-          const poId = 'po_' + Date.now();
-          const poNumber = 'PO-2026-' + String(pos.length + 1).padStart(4, '0');
-          const subtotal = approvalObj.amount;
-          const gst = Math.round(subtotal * 0.18);
-          const total = subtotal + gst;
-
-          const newPO = {
-            id: poId,
-            poNumber,
-            rfqId: approvalObj.rfqId,
-            vendorId: approvalObj.vendorId,
-            amount: subtotal,
-            gst,
-            total,
-            createdDate: formatDate(new Date()),
-            status: 'Confirmed' // Seed confirmed state
-          };
-
-          pos.push(newPO);
-          DB.set('vb_pos', pos);
-          DB.log(session.email, 'RFQ', `Auto-generated Confirmed Purchase Order: ${poNumber} for awarded vendor.`);
-
-          // Send PO notification email to vendor in-app
-          const vendors = DB.get('vb_vendors') || [];
-          const vendor = vendors.find(v => v.id === approvalObj.vendorId);
-          if (vendor) {
-            const body = `Dear ${vendor.contactPerson},\n\n` +
-              `We are pleased to inform you that your quotation has been approved and awarded for RFQ: ${poNumber}.\n\n` +
-              `Confirmed Purchase Order ${poNumber} has been generated.\n\n` +
-              `Total Amount: ${formatCurrency(total)} (Subtotal: ${formatCurrency(subtotal)} + GST 18%: ${formatCurrency(gst)})\n\n` +
-              `Please log in to the VendorBridge portal to confirm delivery schedule.\n\n` +
-              `Best regards,\n` +
-              `Procurement Department\n` +
-              `VendorBridge ERP`;
-            DB.sendEmail(vendor.email, 'officer@vendorbridge.com', `Purchase Order Confirmed: ${poNumber}`, body);
-          }
-          showToast(`Purchase Order ${poNumber} generated successfully!`, 'info');
+          // Notify Procurement
+          const subject = `PR Approved: Ready for RFQ Conversion (${pr.prNumber})`;
+          const body = `Hello Procurement Team,\n\nPurchase Request ${pr.prNumber} ("${pr.title}") has been Approved by ${session.name}.\n\nYou can now log in and convert this approved PR into a Request for Quotation (RFQ) in the 'Convert Requests' queue.\n\nBest regards,\nSystem Approvals`;
+          DB.sendEmail('buyer@vendorbridge.com', session.email, subject, body);
+        } else {
+          // Notify Requester
+          const subject = `PR Rejected: ${pr.prNumber}`;
+          const body = `Hello,\n\nYour Purchase Request ${pr.prNumber} ("${pr.title}") has been Rejected by Department Head ${session.name}.\n\nRemarks: ${remarksVal}\n\nYou can log in to revise the requirements and re-submit.\n\nBest regards,\nSystem Approvals`;
+          DB.sendEmail(pr.requestedBy, session.email, subject, body);
         }
 
         renderApprovals();
       }
     }
-
-    Router.add('#/approvals', renderApprovals, ['Admin', 'Manager']);
-
-    // ----------------------------------------------------
-    // SCREEN 8: PURCHASE ORDERS
-    // ----------------------------------------------------
     function renderPOs() {
       const pos = DB.get('vb_pos') || [];
       const rfqs = DB.get('vb_rfqs') || [];
@@ -5108,7 +5515,11 @@
                         <td>${formatCurrency(p.amount)}</td>
                         <td><b>${formatCurrency(p.total)}</b></td>
                         <td>${p.createdDate}</td>
-                        <td><span class="badge badge-success">${p.status}</span></td>
+                        <td><span class="badge ${
+                          p.status === 'Pending Acceptance' ? 'badge-warning' :
+                          p.status === 'Accepted' ? 'badge-info' :
+                          p.status === 'Invoice Uploaded' ? 'badge-primary' : 'badge-success'
+                        }">${p.status}</span></td>
                         <td class="actions-cell">
                           <button class="btn btn-outline btn-sm" onclick="Router.navigate('#/pos/view?id=${p.id}')">👁 View PO</button>
                         </td>
@@ -5156,8 +5567,13 @@
           <button class="btn btn-outline" onclick="Router.navigate('#/pos')">← Back</button>
           <button class="btn btn-outline" onclick="window.print()">🖨 Print PO</button>
           <button class="btn btn-outline" onclick="emailPO('${po.id}')">✉️ Email</button>
-          ${!hasInvoice && session.role !== 'Vendor' ? `
-            <button class="btn btn-success" onclick="generateInvoiceFromPO('${po.id}')">📄 Generate Invoice</button>
+          
+          <!-- Vendor specific actions -->
+          ${session.role === 'Vendor' && po.status === 'Pending Acceptance' ? `
+            <button class="btn btn-success" onclick="acceptPurchaseOrder('${po.id}')">✅ Accept Purchase Order</button>
+          ` : ''}
+          ${session.role === 'Vendor' && po.status === 'Accepted' ? `
+            <button class="btn btn-primary" onclick="showUploadInvoiceModal('${po.id}')">📤 Upload Invoice</button>
           ` : ''}
         </div>
 
@@ -5170,7 +5586,11 @@
             <div class="doc-meta">
               <h3>PO Number: <b>${po.poNumber}</b></h3>
               <p>Date: ${po.createdDate}</p>
-              <p>Status: <span class="badge badge-success" style="font-size:0.75rem;">${po.status}</span></p>
+              <p>Status: <span class="badge ${
+                po.status==='Pending Acceptance'?'badge-warning':
+                po.status==='Accepted'?'badge-info':
+                po.status==='Invoice Uploaded'?'badge-primary':'badge-success'
+              }" style="font-size:0.75rem;">${po.status}</span></p>
             </div>
           </div>
 
@@ -5235,73 +5655,130 @@
             <p>2. Payment will be processed within Net 30 days of receiving a verified GST-compliance invoice.</p>
           </div>
         </div>
+
+        <!-- Upload Invoice Modal -->
+        <div class="modal-overlay" id="upload-invoice-modal">
+          <div class="modal-container" style="max-width: 450px;">
+            <div class="modal-header">
+              <h3 class="modal-title">📤 Upload Supplier Invoice</h3>
+              <button class="modal-close" onclick="closeModal('upload-invoice-modal')">&times;</button>
+            </div>
+            <form id="upload-invoice-form">
+              <input type="hidden" id="upload-invoice-po-id" />
+              <div class="modal-body">
+                <div style="background-color: rgba(135,90,123,0.08); padding: 0.75rem; border-radius: 4px; margin-bottom: 1rem;">
+                  <p style="font-size:0.85rem;"><b>Purchase Order:</b> ${po.poNumber}</p>
+                  <p style="font-size:0.85rem;"><b>PO Total Amount:</b> ${formatCurrency(po.total)}</p>
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Invoice Number <span class="required">*</span></label>
+                  <input type="text" id="upload-invoice-num" class="form-control" placeholder="e.g. INV-2026-901" required />
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Payment Terms</label>
+                  <select id="upload-invoice-terms" class="form-control">
+                    <option value="Net 30">Net 30 days</option>
+                    <option value="Net 15">Net 15 days</option>
+                    <option value="Immediate">Immediate payment</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Invoice Attachment File</label>
+                  <input type="text" id="upload-invoice-file" class="form-control" value="invoice_${po.poNumber}.pdf" disabled />
+                  <small class="text-muted">Simulated PDF representation will be uploaded.</small>
+                </div>
+              </div>
+              <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="closeModal('upload-invoice-modal')">Cancel</button>
+                <button type="submit" class="btn btn-primary">Submit Invoice</button>
+              </div>
+            </form>
+          </div>
+        </div>
       `;
 
       const root = document.getElementById('app-root');
       root.innerHTML = getLayoutWrapper('Purchase Order Dossier', html);
       updateSidebarActive();
-    }
 
-    function generateInvoiceFromPO(poId) {
-      const pos = DB.get('vb_pos') || [];
-      const po = pos.find(p => p.id === poId);
-      if (!po) return;
+      // Bind acceptance action
+      window.acceptPurchaseOrder = (id) => {
+        const pos = DB.get('vb_pos') || [];
+        const idx = pos.findIndex(p => p.id === id);
+        if (idx !== -1) {
+          pos[idx].status = 'Accepted';
+          DB.set('vb_pos', pos);
 
-      const invoices = DB.get('vb_invoices') || [];
-      const session = DB.get('vb_session');
+          const buyerUser = DB.get('vb_users').find(u => u.role === 'Procurement Executive') || { email: 'buyer@vendorbridge.com' };
+          DB.log(session.email, 'PO Acceptance', `Accepted Purchase Order ${pos[idx].poNumber}.`);
 
-      const invNumber = 'INV-2026-' + String(invoices.length + 1).padStart(3, '0');
-      
-      const createdDateObj = new Date();
-      const dueDateObj = new Date();
-      dueDateObj.setDate(dueDateObj.getDate() + 30); // Net 30 days
+          // Send mail to buyer
+          const subject = `PO Accepted: ${pos[idx].poNumber}`;
+          const body = `Hello,\n\nSupplier ${session.name} has Accepted your Purchase Order Reference: ${pos[idx].poNumber}.\n\nThey will now fulfill shipment and upload invoice inside their portal.\n\nBest regards,\nSystem Notifications`;
+          DB.sendEmail(buyerUser.email, session.email, subject, body);
 
-      const newInv = {
-        id: 'inv_' + Date.now(),
-        invoiceNumber: invNumber,
-        poId: po.id,
-        vendorId: po.vendorId,
-        amount: po.amount,
-        gst: po.gst,
-        total: po.total,
-        createdDate: formatDate(createdDateObj),
-        dueDate: formatDate(dueDateObj),
-        status: 'Sent'
+          showToast('Purchase Order has been accepted!', 'success');
+          renderPOView({ id });
+        }
       };
 
-      invoices.push(newInv);
-      DB.set('vb_invoices', invoices);
+      window.showUploadInvoiceModal = (id) => {
+        document.getElementById('upload-invoice-po-id').value = id;
+        document.getElementById('upload-invoice-num').value = 'INV-' + Date.now().toString().substring(8);
+        openModal('upload-invoice-modal');
+      };
 
-      DB.log(session.email, 'Invoice', `Generated Invoice: ${invNumber} from Purchase Order: ${po.poNumber}`);
-      showToast(`Invoice ${invNumber} generated successfully!`, 'success');
-      Router.navigate('#/invoices');
+      // Bind upload invoice submit
+      const uploadForm = document.getElementById('upload-invoice-form');
+      if (uploadForm) {
+        uploadForm.addEventListener('submit', (e) => {
+          e.preventDefault();
+          const poId = document.getElementById('upload-invoice-po-id').value;
+          const invoiceNum = document.getElementById('upload-invoice-num').value.trim();
+          const terms = document.getElementById('upload-invoice-terms').value;
+          const invoiceFile = document.getElementById('upload-invoice-file').value;
+
+          const pos = DB.get('vb_pos') || [];
+          const poIdx = pos.findIndex(p => p.id === poId);
+          if (poIdx === -1) return;
+
+          const po = pos[poIdx];
+          po.status = 'Invoice Uploaded';
+          DB.set('vb_pos', pos);
+
+          const invoices = DB.get('vb_invoices') || [];
+          const newInv = {
+            id: 'inv_' + Date.now(),
+            invoiceNumber: invoiceNum,
+            poId: po.id,
+            vendorId: po.vendorId,
+            amount: po.amount,
+            gst: po.gst,
+            total: po.total,
+            createdDate: formatDate(new Date()),
+            dueDate: formatDate(new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)),
+            status: 'Pending Verification',
+            invoiceFile,
+            paymentTerms: terms
+          };
+
+          invoices.push(newInv);
+          DB.set('vb_invoices', invoices);
+
+          DB.log(session.email, 'Invoice', `Uploaded Supplier Invoice ${invoiceNum} for PO ${po.poNumber}.`);
+
+          // Notify Finance
+          const financeUser = DB.get('vb_users').find(u => u.role === 'Finance') || { email: 'finance@vendorbridge.com' };
+          const subject = `Supplier Invoice Uploaded: ${invoiceNum}`;
+          const body = `Hello Finance Team,\n\nVendor ${session.name} has uploaded Invoice Reference: ${invoiceNum} for Purchase Order ${po.poNumber}.\n\nValue: ${formatCurrency(po.total)} (GST: ${formatCurrency(po.gst)})\n\nPlease log in to reconcile the invoice and release payment inside the '3-Way Match' Audit Ledger.\n\nBest regards,\nSystem Billing`;
+          DB.sendEmail(financeUser.email, session.email, subject, body);
+
+          closeModal('upload-invoice-modal');
+          showToast(`Invoice ${invoiceNum} submitted successfully! Ready for finance verification.`, 'success');
+          renderPOView({ id: poId });
+        });
+      }
     }
-
-    function emailPO(poId) {
-      const pos = DB.get('vb_pos') || [];
-      const po = pos.find(p => p.id === poId);
-      if (!po) return;
-
-      const vendors = DB.get('vb_vendors') || [];
-      const vendor = vendors.find(v => v.id === po.vendorId);
-      if (!vendor) return;
-
-      const subject = `Purchase Order Confirmation ${po.poNumber}`;
-      const mailBody = `Hello ${vendor.contactPerson},\n\nPlease find attached Purchase Order Reference: ${po.poNumber} for the contract items.\n\nBest Regards,\nProcurement Team\nVendorBridge Inc.`;
-      
-      // Send in-app email
-      DB.sendEmail(vendor.email, DB.get('vb_session').email, subject, mailBody);
-      
-      // Dispatch email using manager modal
-      sendEmailWithModal(vendor.email, subject, mailBody);
-    }
-
-    Router.add('#/pos', renderPOs);
-    Router.add('#/pos/view', renderPOView);
-
-    // ----------------------------------------------------
-    // SCREEN 8B: INVOICE GENERATION
-    // ----------------------------------------------------
     function renderInvoices() {
       const invoices = DB.get('vb_invoices') || [];
       const pos = DB.get('vb_pos') || [];
@@ -5345,7 +5822,7 @@
                         <td>${formatCurrency(i.gst)}</td>
                         <td><b>${formatCurrency(i.total)}</b></td>
                         <td>${i.dueDate}</td>
-                        <td><span class="badge ${i.status === 'Sent' ? 'badge-info' : 'badge-success'}">${i.status}</span></td>
+                        <td><span class="badge ${i.status === 'Pending Verification' ? 'badge-warning' : 'badge-success'}">${i.status}</span></td>
                         <td class="actions-cell">
                           <button class="btn btn-outline btn-sm" onclick="Router.navigate('#/invoices/view?id=${i.id}')">👁 View Invoice</button>
                         </td>
@@ -5379,21 +5856,73 @@
       }
 
       const pos = DB.get('vb_pos') || [];
-      const po = pos.find(p => p.id === inv.poId) || { poNumber: 'N/A', rfqId: '' };
+      const po = pos.find(p => p.id === inv.poId) || { poNumber: 'N/A', rfqId: '', total: 0, status: 'N/A' };
       const rfqs = DB.get('vb_rfqs') || [];
       const rfq = rfqs.find(r => r.id === po.rfqId) || { items: [] };
       const vendors = DB.get('vb_vendors') || [];
       const vendor = vendors.find(v => v.id === inv.vendorId) || { name: 'Unknown', contactPerson: 'N/A', email: 'N/A' };
+      const session = DB.get('vb_session');
+
+      // Check reconciliation matching
+      const poMatch = po.id && po.poNumber !== 'N/A';
+      const amountMatch = Math.round(po.total) === Math.round(inv.total);
+      const deliveryMatch = po.status === 'Accepted' || po.status === 'Invoice Uploaded' || po.status === 'Paid';
+      const threeWayMatchPassed = poMatch && amountMatch && deliveryMatch;
+
+      const isFinance = session.role === 'Finance' || session.role === 'Super Admin';
 
       const html = `
         <div class="doc-actions-wrapper">
           <button class="btn btn-outline" onclick="Router.navigate('#/invoices')">← Back</button>
           <button class="btn btn-outline" onclick="window.print()">⬇️ Download PDF / Print</button>
           <button class="btn btn-outline" onclick="emailInvoice('${inv.id}')">✉️ Email Invoice</button>
-          ${inv.status !== 'Paid' ? `
-            <button class="btn btn-success" onclick="markInvoiceAsPaid('${inv.id}')">💵 Mark as Paid</button>
+          ${isFinance && inv.status !== 'Paid' ? `
+            <button class="btn btn-success" ${!threeWayMatchPassed ? 'disabled title="3-Way Match fails reconciliation"' : ''} onclick="processInvoicePayment('${inv.id}')">💵 Verify & Release Payment</button>
           ` : ''}
         </div>
+
+        ${isFinance ? `
+          <div class="card" style="margin-bottom: 1.5rem; border: 1px solid ${threeWayMatchPassed ? 'var(--success-green)' : 'var(--danger-red)'};">
+            <div class="card-header" style="background-color: ${threeWayMatchPassed ? 'rgba(40,167,69,0.06)' : 'rgba(220,53,69,0.06)'}; border-bottom: 1px solid ${threeWayMatchPassed ? 'var(--success-green)' : 'var(--danger-red)'};">
+              <h3 class="card-title" style="color: ${threeWayMatchPassed ? 'var(--success-green)' : 'var(--danger-red)'}; display:flex; align-items:center; gap:0.5rem;">
+                🔍 3-Way Reconciliation Audit Matching Panel
+                ${threeWayMatchPassed ? '<span class="badge badge-success">Passed</span>' : '<span class="badge badge-danger">Audit Alert</span>'}
+              </h3>
+            </div>
+            <div class="card-body">
+              <div style="display:grid; grid-template-columns: repeat(3, 1fr); gap:1.5rem; margin-bottom: 1rem;">
+                <div style="background:#f8f9fa; border:1px solid var(--border-color); padding:1rem; border-radius:4px; text-align:center;">
+                  <h4 style="margin-bottom:0.5rem; color:var(--text-muted); font-size:0.8rem; text-transform:uppercase;">1. Purchase Order Match</h4>
+                  <div style="font-size:2rem; margin-bottom:0.5rem;">${poMatch ? '✅' : '❌'}</div>
+                  <p style="font-size:0.85rem;"><b>PO:</b> ${po.poNumber}</p>
+                  <p style="font-size:0.85rem;"><b>Amount:</b> ${formatCurrency(po.total)}</p>
+                </div>
+                <div style="background:#f8f9fa; border:1px solid var(--border-color); padding:1rem; border-radius:4px; text-align:center;">
+                  <h4 style="margin-bottom:0.5rem; color:var(--text-muted); font-size:0.8rem; text-transform:uppercase;">2. Invoice Check</h4>
+                  <div style="font-size:2rem; margin-bottom:0.5rem;">${amountMatch ? '✅' : '❌'}</div>
+                  <p style="font-size:0.85rem;"><b>INV:</b> ${inv.invoiceNumber}</p>
+                  <p style="font-size:0.85rem;"><b>Amount:</b> ${formatCurrency(inv.total)}</p>
+                </div>
+                <div style="background:#f8f9fa; border:1px solid var(--border-color); padding:1rem; border-radius:4px; text-align:center;">
+                  <h4 style="margin-bottom:0.5rem; color:var(--text-muted); font-size:0.8rem; text-transform:uppercase;">3. Fulfill & Acceptance</h4>
+                  <div style="font-size:2rem; margin-bottom:0.5rem;">${deliveryMatch ? '✅' : '❌'}</div>
+                  <p style="font-size:0.85rem;"><b>Status:</b> ${po.status}</p>
+                  <p style="font-size:0.82rem; color:var(--text-muted);">Accepted & Confirmed by Supplier</p>
+                </div>
+              </div>
+
+              ${threeWayMatchPassed ? `
+                <div style="background-color:rgba(40,167,69,0.08); border-left:4px solid var(--success-green); padding:0.75rem; border-radius:4px; font-size:0.85rem; color:#155724;">
+                  🎉 <b>3-Way Matching Success!</b> All validation checkpoints reconcile completely. Ready for payment release.
+                </div>
+              ` : `
+                <div style="background-color:rgba(220,53,69,0.08); border-left:4px solid var(--danger-red); padding:0.75rem; border-radius:4px; font-size:0.85rem; color:#721c24;">
+                  ⚠️ <b>Audit Warning:</b> reconciliation fails matching criteria. Verify Purchase Order acceptance, matching line items, or total cost before proceeding.
+                </div>
+              `}
+            </div>
+          </div>
+        ` : ''}
 
         <div class="doc-page">
           <div class="doc-header">
@@ -5405,7 +5934,7 @@
               <h3>Invoice #: <b>${inv.invoiceNumber}</b></h3>
               <p>Date: ${inv.createdDate}</p>
               <p>Due: <b>${inv.dueDate}</b></p>
-              <p>Status: <span class="badge ${inv.status === 'Sent' ? 'badge-info' : 'badge-success'}">${inv.status}</span></p>
+              <p>Status: <span class="badge ${inv.status === 'Pending Verification' ? 'badge-warning' : 'badge-success'}">${inv.status}</span></p>
             </div>
           </div>
 
@@ -5466,31 +5995,54 @@
 
           <div class="doc-footer">
             <p><b>Payment Terms & Bank Details:</b></p>
-            <p>Payment Terms: Net 30 days corporate payment.</p>
+            <p>Payment Terms: ${inv.paymentTerms || 'Net 30'}</p>
             <p>Bank: HDFC Bank India | Account No: 1234567890 | IFSC: HDFC0000123</p>
           </div>
         </div>
       `;
 
       const root = document.getElementById('app-root');
-      root.innerHTML = getLayoutWrapper('Invoice Dossier', html);
+      root.innerHTML = getLayoutWrapper('Invoice Reconciliation Dossier', html);
       updateSidebarActive();
-    }
 
-    function markInvoiceAsPaid(id) {
-      const invoices = DB.get('vb_invoices') || [];
-      const idx = invoices.findIndex(i => i.id === id);
-      if (idx !== -1) {
-        invoices[idx].status = 'Paid';
-        DB.set('vb_invoices', invoices);
-        
-        const session = DB.get('vb_session');
-        DB.log(session.email, 'Invoice', `Marked Invoice: ${invoices[idx].invoiceNumber} as Paid.`);
-        showToast('Invoice has been successfully marked as Paid!', 'success');
-        Router.navigate(`#/invoices/view?id=${id}`);
-      }
-    }
+      // Release payment action
+      window.processInvoicePayment = (id) => {
+        if (confirm('Are you sure you want to verify this 3-way match and release corporate payment?')) {
+          const invoices = DB.get('vb_invoices') || [];
+          const invIdx = invoices.findIndex(i => i.id === id);
+          if (invIdx === -1) return;
 
+          const invObj = invoices[invIdx];
+          invObj.status = 'Paid';
+          DB.set('vb_invoices', invoices);
+
+          // Update PO to Paid
+          const pos = DB.get('vb_pos') || [];
+          const poIdx = pos.findIndex(p => p.id === invObj.poId);
+          if (poIdx !== -1) {
+            pos[poIdx].status = 'Paid';
+            DB.set('vb_pos', pos);
+          }
+
+          DB.log(session.email, 'Finance', `Released payment for Invoice ${invObj.invoiceNumber}. PO marked Paid.`);
+
+          // Notify Vendor in-app
+          const vendors = DB.get('vb_vendors') || [];
+          const vend = vendors.find(v => v.id === invObj.vendorId);
+          if (vend) {
+            const subject = `Payment Released: ${invObj.invoiceNumber}`;
+            const body = `Dear ${vend.contactPerson},\n\nWe are pleased to inform you that payment has been successfully released for Invoice: ${invObj.invoiceNumber}.\n\nReleased Value: ${formatCurrency(invObj.total)}\n\nThank you for partnering with VendorBridge.\n\nBest regards,\nFinance Department\nVendorBridge ERP`;
+            DB.sendEmail(vend.email, session.email, subject, body);
+
+            // Send actual email via modal
+            sendEmailWithModal(vend.email, subject, body);
+          }
+
+          showToast(`Payment of ${formatCurrency(invObj.total)} released successfully!`, 'success');
+          renderInvoiceView({ id });
+        }
+      };
+    }
     function emailInvoice(id) {
       const invoices = DB.get('vb_invoices') || [];
       const inv = invoices.find(i => i.id === id);
@@ -6089,10 +6641,12 @@
                 <div class="form-group">
                   <label class="form-label">System Role <span class="required">*</span></label>
                   <select id="user-role" class="form-control" required>
-                    <option value="Admin">Admin</option>
-                    <option value="Procurement Officer">Procurement Officer</option>
-                    <option value="Vendor">Vendor Partner</option>
-                    <option value="Manager">Manager</option>
+                    <option value="Super Admin">Super Admin</option>
+                    <option value="Requester">Requester</option>
+                    <option value="Department Approver">Department Approver</option>
+                    <option value="Procurement Executive">Procurement Executive</option>
+                    <option value="Vendor">Vendor</option>
+                    <option value="Finance">Finance</option>
                   </select>
                 </div>
                 <div class="form-group form-checkbox-row" style="margin-bottom: 0;">
@@ -6117,10 +6671,12 @@
 
       const renderRow = (u) => {
         let badgeColor = 'badge-secondary';
-        if (u.role === 'Admin') badgeColor = 'badge-danger';
-        else if (u.role === 'Procurement Officer') badgeColor = 'badge-info';
+        if (u.role === 'Super Admin') badgeColor = 'badge-danger';
+        else if (u.role === 'Requester') badgeColor = 'badge-info';
+        else if (u.role === 'Department Approver') badgeColor = 'badge-warning';
+        else if (u.role === 'Procurement Executive') badgeColor = 'badge-primary';
         else if (u.role === 'Vendor') badgeColor = 'badge-success';
-        else if (u.role === 'Manager') badgeColor = 'badge-warning';
+        else if (u.role === 'Finance') badgeColor = 'badge-success';
 
         return `
           <td><b>${u.name}</b></td>
@@ -6180,69 +6736,386 @@
         renderUsers();
       });
     }
+    let prPagerInstance = null;
 
-    function showAddUserModal() {
-      document.getElementById('user-modal-title').textContent = 'Add User Account';
-      document.getElementById('user-edit-id').value = '';
-      document.getElementById('user-form').reset();
-      document.getElementById('user-status-toggle').checked = true;
-      openModal('user-modal');
-    }
-
-    function editUser(id) {
-      const users = DB.get('vb_users') || [];
-      const u = users.find(item => item.id === id);
-      if (!u) return;
-
-      document.getElementById('user-modal-title').textContent = 'Edit User Account';
-      document.getElementById('user-edit-id').value = u.id;
-      document.getElementById('user-name').value = u.name;
-      document.getElementById('user-email').value = u.email;
-      document.getElementById('user-password').value = u.password;
-      document.getElementById('user-role').value = u.role;
-      document.getElementById('user-status-toggle').checked = u.status === 'Active';
-
-      openModal('user-modal');
-    }
-
-    function toggleUserStatus(id) {
-      const users = DB.get('vb_users') || [];
-      const idx = users.findIndex(item => item.id === id);
-      if (idx === -1) return;
-
-      const u = users[idx];
-      if (u.email === DB.get('vb_session').email) {
-        showToast('You cannot deactivate your own active session!', 'error');
-        return;
+    function renderRequests() {
+      const session = DB.get('vb_session');
+      const prs = DB.get('vb_purchase_requests') || [];
+      
+      let displayPrs = prs;
+      if (session.role === 'Requester') {
+        displayPrs = prs.filter(p => p.requestedBy === session.email);
       }
 
-      const nextStatus = u.status === 'Active' ? 'Inactive' : 'Active';
-      if (confirm(`Are you sure you want to change status of "${u.name}" to ${nextStatus}?`)) {
-        u.status = nextStatus;
-        DB.set('vb_users', users);
-        DB.log(DB.get('vb_session').email, 'User', `Toggled User account active state for ${u.name}.`);
-        showToast(`User account status set to ${nextStatus}!`, 'success');
-        renderUsers();
-      }
+      const isRequester = session.role === 'Requester' || session.role === 'Super Admin';
+
+      const html = `
+        <div class="card">
+          <div class="table-header-controls">
+            <div class="table-search-box">
+              <span class="input-icon">🔍</span>
+              <input type="text" id="pr-search" class="form-control table-search-input" placeholder="Search requests..." />
+            </div>
+            ${isRequester ? `
+              <button class="btn btn-primary" onclick="showCreatePRModal()">+ Raise Purchase Request</button>
+            ` : ''}
+          </div>
+
+          <div class="table-responsive">
+            <table class="custom-table" id="pr-table-element">
+              <thead>
+                <tr>
+                  <th data-sort="prNumber">PR Number</th>
+                  <th data-sort="title">Title</th>
+                  <th data-sort="department">Department</th>
+                  <th data-sort="requestedBy">Requested By</th>
+                  <th data-sort="createdDate">Date Raised</th>
+                  <th>Estimated Value</th>
+                  <th data-sort="status">Status</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="pr-tbody"></tbody>
+            </table>
+          </div>
+          <div class="pagination-container" id="pr-tbody-pager"></div>
+        </div>
+
+        <!-- Create PR Modal Overlay -->
+        <div class="modal-overlay" id="pr-modal">
+          <div class="modal-container" style="max-width: 700px;">
+            <div class="modal-header">
+              <h3 class="modal-title">📝 Raise Purchase Request</h3>
+              <button class="modal-close" onclick="closeModal('pr-modal')">&times;</button>
+            </div>
+            <form id="pr-form">
+              <div class="modal-body" style="max-height: calc(90vh - 120px); overflow-y: auto;">
+                <div class="form-group">
+                  <label class="form-label">Request Title <span class="required">*</span></label>
+                  <input type="text" id="pr-title" class="form-control" placeholder="e.g. IT laptops upgrade Q3" required />
+                </div>
+                <div class="form-row" style="display:grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                  <div class="form-group">
+                    <label class="form-label">Department <span class="required">*</span></label>
+                    <select id="pr-dept" class="form-control" required>
+                      <option value="IT">IT Department</option>
+                      <option value="HR">Human Resources</option>
+                      <option value="Finance">Finance Team</option>
+                      <option value="Warehouse">Warehouse & Stores</option>
+                      <option value="Operations">Operations</option>
+                    </select>
+                  </div>
+                  <div class="form-group">
+                    <label class="form-label">Requester Email</label>
+                    <input type="text" class="form-control" value="${session.email}" disabled />
+                  </div>
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Justification / Description <span class="required">*</span></label>
+                  <textarea id="pr-desc" class="form-control" style="height:80px;" placeholder="Provide justification or specification details..." required></textarea>
+                </div>
+
+                <div style="border-top:1px solid var(--border-color); margin-top:1.5rem; padding-top:1rem;">
+                  <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.75rem;">
+                    <h4 style="color:var(--primary-purple); font-weight:700;">Requested Items List</h4>
+                    <button type="button" class="btn btn-outline btn-sm" onclick="addPRFormItemRow()">+ Add Item</button>
+                  </div>
+                  <div class="table-responsive">
+                    <table class="custom-table" style="font-size:0.85rem;" id="pr-items-table">
+                      <thead>
+                        <tr style="background:#f8f9fa;">
+                          <th>Item Name / Description <span class="required">*</span></th>
+                          <th style="width:100px; text-align:center;">Quantity</th>
+                          <th style="width:100px; text-align:center;">Unit</th>
+                          <th style="width:150px; text-align:right;">Est. Unit Price</th>
+                          <th style="width:50px;"></th>
+                        </tr>
+                      </thead>
+                      <tbody id="pr-form-items-tbody"></tbody>
+                    </table>
+                  </div>
+                  <div style="text-align:right; margin-top: 1rem; font-size:1.1rem; font-weight:700; color:var(--primary-purple);">
+                    Estimated Total: <span id="pr-form-grand-total">₹0.00</span>
+                  </div>
+                </div>
+              </div>
+              <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="closeModal('pr-modal')">Cancel</button>
+                <button type="submit" class="btn btn-primary">Submit for Approval</button>
+              </div>
+            </form>
+          </div>
+        </div>
+
+        <!-- PR Details Modal Overlay -->
+        <div class="modal-overlay" id="pr-detail-modal">
+          <div class="modal-container" style="max-width: 600px;">
+            <div class="modal-header">
+              <h3 class="modal-title" id="pr-detail-title">Purchase Request Details</h3>
+              <button class="modal-close" onclick="closeModal('pr-detail-modal')">&times;</button>
+            </div>
+            <div class="modal-body" style="font-size:0.9rem;" id="pr-detail-body">
+              <!-- Dynamically populated -->
+            </div>
+            <div class="modal-footer">
+              <button class="btn btn-secondary" onclick="closeModal('pr-detail-modal')">Close</button>
+            </div>
+          </div>
+        </div>
+      `;
+
+      const root = document.getElementById('app-root');
+      root.innerHTML = getLayoutWrapper('Purchase Requests Registry', html);
+      updateSidebarActive();
+
+      const renderRow = (p) => {
+        const estTotal = p.items.reduce((sum, item) => sum + (item.qty * item.estPrice), 0);
+        return `
+          <td><b>${p.prNumber}</b></td>
+          <td>${p.title}</td>
+          <td>${p.department}</td>
+          <td>${p.requestedBy}</td>
+          <td>${p.createdDate}</td>
+          <td><b>${formatCurrency(estTotal)}</b></td>
+          <td><span class="badge ${
+            p.status === 'Draft' ? 'badge-secondary' :
+            p.status === 'Pending Approval' ? 'badge-warning' :
+            p.status === 'Approved' ? 'badge-success' :
+            p.status === 'Converted' ? 'badge-info' : 'badge-danger'
+          }">${p.status}</span></td>
+          <td class="actions-cell">
+            <button class="btn btn-outline btn-sm" onclick="viewPRDetail('${p.id}')">👁 View Details</button>
+          </td>
+        `;
+      };
+
+      prPagerInstance = new TablePager(displayPrs, 'pr-tbody', renderRow, 10);
+      prPagerInstance.render();
+
+      setupTableSorting('pr-table-element', displayPrs, prPagerInstance);
+      highlightSearchTerms('pr-tbody', 'pr-search');
+
+      // Bind modal helpers
+      window.showCreatePRModal = () => {
+        document.getElementById('pr-form').reset();
+        document.getElementById('pr-form-items-tbody').innerHTML = '';
+        addPRFormItemRow();
+        openModal('pr-modal');
+      };
+
+      window.addPRFormItemRow = (item = { name: '', qty: 1, unit: 'Units', estPrice: 0 }) => {
+        const tbody = document.getElementById('pr-form-items-tbody');
+        const rowId = 'pr_item_row_' + Date.now() + Math.random().toString(36).substring(2, 5);
+        const tr = document.createElement('tr');
+        tr.id = rowId;
+        tr.innerHTML = `
+          <td><input type="text" class="form-control item-name" placeholder="Item spec" value="${item.name}" required style="padding: 0.35rem 0.5rem; font-size:0.85rem;" /></td>
+          <td><input type="number" class="form-control item-qty text-center" min="1" value="${item.qty}" required style="padding: 0.35rem 0.5rem; font-size:0.85rem;" oninput="recalculatePRFormTotal()" /></td>
+          <td>
+            <select class="form-control item-unit" style="padding: 0.35rem 0.5rem; font-size:0.85rem;">
+              <option value="Units" ${item.unit==='Units'?'selected':''}>Units</option>
+              <option value="Hours" ${item.unit==='Hours'?'selected':''}>Hours</option>
+              <option value="Liters" ${item.unit==='Liters'?'selected':''}>Liters</option>
+              <option value="Lots" ${item.unit==='Lots'?'selected':''}>Lots</option>
+            </select>
+          </td>
+          <td><input type="number" class="form-control item-rate text-right" min="0" value="${item.estPrice}" required style="padding: 0.35rem 0.5rem; font-size:0.85rem;" oninput="recalculatePRFormTotal()" /></td>
+          <td style="text-align:center;"><button type="button" class="btn btn-outline btn-sm text-danger" onclick="document.getElementById('${rowId}').remove(); recalculatePRFormTotal();" style="padding:0.15rem 0.35rem;">&times;</button></td>
+        `;
+        tbody.appendChild(tr);
+        recalculatePRFormTotal();
+      };
+
+      window.recalculatePRFormTotal = () => {
+        const tbody = document.getElementById('pr-form-items-tbody');
+        const rows = tbody.querySelectorAll('tr');
+        let grandTotal = 0;
+        rows.forEach(row => {
+          const qty = Number(row.querySelector('.item-qty').value) || 0;
+          const rate = Number(row.querySelector('.item-rate').value) || 0;
+          grandTotal += qty * rate;
+        });
+        document.getElementById('pr-form-grand-total').textContent = formatCurrency(grandTotal);
+      };
+
+      window.viewPRDetail = (id) => {
+        const prsList = DB.get('vb_purchase_requests') || [];
+        const pr = prsList.find(p => p.id === id);
+        if (!pr) return;
+
+        const estTotal = pr.items.reduce((sum, item) => sum + (item.qty * item.estPrice), 0);
+
+        const body = document.getElementById('pr-detail-body');
+        body.innerHTML = `
+          <div style="background-color:rgba(135,90,123,0.08); padding:0.75rem; border-radius:4px; margin-bottom:1rem; border-left:4px solid var(--primary-purple);">
+            <p><b>Purchase Request:</b> ${pr.prNumber}</p>
+            <p><b>Title:</b> ${pr.title}</p>
+            <p><b>Department:</b> ${pr.department}</p>
+            <p><b>Status:</b> <span class="badge ${
+              pr.status==='Draft'?'badge-secondary':
+              pr.status==='Pending Approval'?'badge-warning':
+              pr.status==='Approved'?'badge-success':
+              pr.status==='Converted'?'badge-info':'badge-danger'
+            }">${pr.status}</span></p>
+          </div>
+          
+          <p style="margin-bottom:1rem;"><b>Description / Justification:</b><br/><i>${pr.description}</i></p>
+
+          <h4 style="color:var(--primary-purple); font-weight:700; margin-bottom:0.5rem;">Requested Items List</h4>
+          <table class="custom-table" style="font-size:0.8rem; margin-bottom:1.5rem;">
+            <thead>
+              <tr style="background:#f8f9fa;">
+                <th style="padding:0.4rem;">Description</th>
+                <th style="padding:0.4rem; text-align:center;">Qty</th>
+                <th style="padding:0.4rem; text-align:right;">Est Rate</th>
+                <th style="padding:0.4rem; text-align:right;">Total</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${pr.items.map(it => `
+                <tr>
+                  <td style="padding:0.4rem;">${it.name}</td>
+                  <td style="padding:0.4rem; text-align:center;">${it.qty} ${it.unit}</td>
+                  <td style="padding:0.4rem; text-align:right;">${formatCurrency(it.estPrice)}</td>
+                  <td style="padding:0.4rem; text-align:right;"><b>${formatCurrency(it.qty * it.estPrice)}</b></td>
+                </tr>
+              `).join('')}
+              <tr style="background:#f8f9fa;">
+                <td colspan="3" style="text-align:right; font-weight:bold; padding:0.4rem;">Grand Estimated Value:</td>
+                <td style="text-align:right; color:var(--primary-purple); font-weight:bold; padding:0.4rem;">${formatCurrency(estTotal)}</td>
+              </tr>
+            </tbody>
+          </table>
+
+          <h4 style="color:var(--primary-purple); font-weight:700; margin-bottom:0.5rem;">Workflow Audit History</h4>
+          <div class="approval-timeline" style="margin-top:0.5rem; font-size:0.8rem;">
+            ${pr.history.map(h => `
+              <div class="timeline-step approved">
+                <span class="timeline-dot"></span>
+                <span><b>${h.action}</b> by ${h.user} on ${h.date} ${h.remarks ? ` - <i>"${h.remarks}"</i>` : ''}</span>
+              </div>
+            `).join('')}
+          </div>
+        `;
+        openModal('pr-detail-modal');
+      };
+
+      // Form Submit
+      const form = document.getElementById('pr-form');
+      form.addEventListener('submit', (e) => {
+        e.preventDefault();
+        
+        const title = document.getElementById('pr-title').value.trim();
+        const dept = document.getElementById('pr-dept').value;
+        const desc = document.getElementById('pr-desc').value.trim();
+        
+        const itemRows = document.getElementById('pr-form-items-tbody').querySelectorAll('tr');
+        if (itemRows.length === 0) {
+          showToast('Please add at least one item row.', 'error');
+          return;
+        }
+
+        const items = [];
+        itemRows.forEach(row => {
+          const name = row.querySelector('.item-name').value.trim();
+          const qty = Number(row.querySelector('.item-qty').value) || 1;
+          const unit = row.querySelector('.item-unit').value;
+          const estPrice = Number(row.querySelector('.item-rate').value) || 0;
+          items.push({ name, qty, unit, estPrice });
+        });
+
+        const prsList = DB.get('vb_purchase_requests') || [];
+        const prId = 'pr_' + Date.now();
+        const prNum = 'PR-2026-' + String(prsList.length + 1).padStart(4, '0');
+
+        const newPr = {
+          id: prId,
+          prNumber: prNum,
+          title,
+          description: desc,
+          department: dept,
+          requestedBy: session.email,
+          items,
+          status: 'Pending Approval',
+          createdDate: formatDate(new Date()),
+          remarks: '',
+          history: [
+            { action: 'Created', user: session.email, date: formatDate(new Date()), remarks: 'Raised request.' }
+          ]
+        };
+
+        prsList.push(newPr);
+        DB.set('vb_purchase_requests', prsList);
+        DB.log(session.email, 'PR Creation', `Raised Purchase Request: ${prNum} for ${dept}.`);
+
+        // Send Email notification to Approver
+        const approverUser = DB.get('vb_users').find(u => u.role === 'Department Approver') || { email: 'approver@vendorbridge.com' };
+        const subject = `Pending Approval: Purchase Request ${prNum} - ${title}`;
+        const body = `Hello Department Head,\n\nPurchase Request ${prNum} ("${title}") has been raised by ${session.name}.\n\nDepartment: ${dept}\nEstimated total value: ${formatCurrency(items.reduce((sum, i) => sum + i.qty*i.estPrice, 0))}\n\nPlease log in to review and action this request.\n\nBest regards,\nSystem Notifications`;
+        DB.sendEmail(approverUser.email, session.email, subject, body);
+
+        closeModal('pr-modal');
+        showToast(`Purchase Request ${prNum} raised successfully!`, 'success');
+        renderRequests();
+      });
     }
 
-    function resetUserPassword(id) {
-      const users = DB.get('vb_users') || [];
-      const idx = users.findIndex(item => item.id === id);
-      if (idx === -1) return;
+    function renderRequestsConvert() {
+      const prs = DB.get('vb_purchase_requests') || [];
+      const approvedPrs = prs.filter(p => p.status === 'Approved');
 
-      const u = users[idx];
-      const newPass = prompt(`Enter new password for ${u.name}:`, 'reset123');
-      if (newPass) {
-        u.password = newPass;
-        DB.set('vb_users', users);
-        DB.log(DB.get('vb_session').email, 'User', `Reset password for user account: ${u.name}`);
-        showToast('Password reset successful!', 'success');
-        renderUsers();
-      }
+      const html = `
+        <div class="card">
+          <div class="card-header">
+            <h3 class="card-title">Approved Requests Queue (Ready for RFQ Conversion)</h3>
+          </div>
+          <div class="table-responsive">
+            <table class="custom-table">
+              <thead>
+                <tr>
+                  <th>PR Number</th>
+                  <th>Title</th>
+                  <th>Department</th>
+                  <th>Requested By</th>
+                  <th>Date Approved</th>
+                  <th>Estimated Value</th>
+                  <th>Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${approvedPrs.length === 0 ? '<tr><td colspan="7" class="text-center text-muted" style="padding: 3rem 0;">No approved requests awaiting conversion.</td></tr>' : 
+                  approvedPrs.map(p => {
+                    const estTotal = p.items.reduce((sum, item) => sum + (item.qty * item.estPrice), 0);
+                    const approvalHist = p.history.find(h => h.action === 'Approved') || { date: 'N/A' };
+                    return `
+                      <tr>
+                        <td><b>${p.prNumber}</b></td>
+                        <td>${p.title}</td>
+                        <td>${p.department}</td>
+                        <td>${p.requestedBy}</td>
+                        <td>${approvalHist.date}</td>
+                        <td><b>${formatCurrency(estTotal)}</b></td>
+                        <td>
+                          <button class="btn btn-primary btn-sm" onclick="Router.navigate('#/rfqs?convertPrId=${p.id}')">🔄 Convert to RFQ</button>
+                        </td>
+                      </tr>
+                    `;
+                  }).join('')
+                }
+              </tbody>
+            </table>
+          </div>
+        </div>
+      `;
+
+      const root = document.getElementById('app-root');
+      root.innerHTML = getLayoutWrapper('Purchase Requests Conversion Queue', html);
+      updateSidebarActive();
     }
 
-    Router.add('#/users', renderUsers, ['Admin']);
+    Router.add('#/users', renderUsers, ['Super Admin']);
+    Router.add('#/requests', renderRequests, ['Super Admin', 'Requester']);
+    Router.add('#/requests/convert', renderRequestsConvert, ['Super Admin', 'Procurement Executive']);
   </script>
 </body>
 </html>
