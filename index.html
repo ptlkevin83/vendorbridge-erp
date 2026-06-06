@@ -2212,6 +2212,16 @@
       if (overlay) overlay.classList.remove('show');
     }
 
+    function copyInviteText() {
+      const copyText = document.getElementById('invite-text-copy');
+      if (copyText) {
+        copyText.select();
+        copyText.setSelectionRange(0, 99999); // For mobile devices
+        navigator.clipboard.writeText(copyText.value);
+        showToast('Invitation credentials copied to clipboard!', 'success');
+      }
+    }
+
     // Interactive Profile Modal
     function showProfileModal() {
       const session = DB.get('vb_session');
@@ -3138,6 +3148,40 @@
             </div>
           </div>
         </div>
+
+        <!-- Vendor Credentials Invite Modal Overlay -->
+        <div class="modal-overlay" id="vendor-invite-modal">
+          <div class="modal-container">
+            <div class="modal-header">
+              <h3 class="modal-title">Vendor Account Created</h3>
+              <button class="modal-close" onclick="closeModal('vendor-invite-modal')">&times;</button>
+            </div>
+            <div class="modal-body">
+              <div style="background-color: #D4EDDA; color: #155724; border: 1px solid #c3e6cb; border-radius: 4px; padding: 1rem; margin-bottom: 1.5rem; display: flex; align-items: center; gap: 0.5rem;">
+                <span style="font-size: 1.5rem;">✅</span>
+                <div>
+                  <strong>Success!</strong> Vendor registered and user login account created.
+                </div>
+              </div>
+              <p style="margin-bottom: 1rem;">Provide the following credentials to the vendor so they can log in to the ERP portal:</p>
+              
+              <div style="background-color: #f8f9fa; border: 1px solid var(--border-color); border-radius: 4px; padding: 1rem; margin-bottom: 1.5rem; font-family: monospace; font-size: 0.9rem;">
+                <p><b>Portal Link:</b> <span id="invite-portal-link"></span></p>
+                <p><b>Login Email:</b> <span id="invite-email"></span></p>
+                <p><b>Password:</b> <span id="invite-password">vendor123</span></p>
+              </div>
+
+              <div style="margin-bottom: 1rem;">
+                <textarea id="invite-text-copy" class="form-control" rows="6" readonly style="font-size: 0.85rem; font-family: sans-serif; background-color: #fff;"></textarea>
+              </div>
+            </div>
+            <div class="modal-footer">
+              <button class="btn btn-secondary" onclick="closeModal('vendor-invite-modal')">Close</button>
+              <button class="btn btn-outline" onclick="copyInviteText()">📋 Copy Invite</button>
+              <button class="btn btn-primary" id="btn-send-invite-mail">📧 Send Email</button>
+            </div>
+          </div>
+        </div>
       `;
 
       const root = document.getElementById('app-root');
@@ -3231,6 +3275,53 @@
           DB.set('vb_vendors', dbVendors);
           DB.log(session.email, 'Vendor', `Added Vendor: ${name} (${category})`);
           showToast('New vendor registry added successfully!', 'success');
+
+          // Auto-create User account for this Vendor so they can login to the portal
+          let dbUsers = DB.get('vb_users') || [];
+          if (!dbUsers.some(u => u.email.toLowerCase() === email.toLowerCase())) {
+            const newUser = {
+              id: 'u_' + Date.now(),
+              name: contact,
+              email: email,
+              password: 'vendor123',
+              role: 'Vendor',
+              status: isActive ? 'Active' : 'Inactive',
+              lastLogin: ''
+            };
+            dbUsers.push(newUser);
+            DB.set('vb_users', dbUsers);
+            DB.log(session.email, 'User', `Auto-created User account for Vendor: ${name} (${contact})`);
+          }
+
+          // Populate invitation credentials modal
+          const portalLink = window.location.origin + window.location.pathname;
+          document.getElementById('invite-portal-link').textContent = portalLink;
+          document.getElementById('invite-email').textContent = email;
+          
+          const inviteText = `Dear ${contact},\n\n` +
+            `Welcome to VendorBridge ERP! Your vendor profile has been successfully registered.\n\n` +
+            `You can now access our procurement portal to view invited Requests for Quotations (RFQs), submit pricing, and manage your purchase orders.\n\n` +
+            `Access Link: ${portalLink}\n` +
+            `Login Email: ${email}\n` +
+            `Temporary Password: vendor123\n\n` +
+            `Please update your password after logging in for the first time.\n\n` +
+            `Best regards,\n` +
+            `Procurement Team\n` +
+            `VendorBridge ERP`;
+            
+          document.getElementById('invite-text-copy').value = inviteText;
+
+          // Set up email button
+          const subject = encodeURIComponent("Welcome to VendorBridge ERP - Access Credentials");
+          const body = encodeURIComponent(inviteText);
+          document.getElementById('btn-send-invite-mail').onclick = () => {
+            window.location.href = `mailto:${email}?subject=${subject}&body=${body}`;
+          };
+
+          // Delay slightly so that the vendor-modal closes first
+          setTimeout(() => {
+            openModal('vendor-invite-modal');
+          }, 300);
         }
 
         closeModal('vendor-modal');
@@ -3906,6 +3997,9 @@
             </div>
           </div>
           <div class="modal-footer">
+            ${session.role === 'Procurement Officer' || session.role === 'Admin' ? `
+              <button class="btn btn-outline" onclick="emailRFQ('${rfq.id}')">📧 Email RFQ to Vendors</button>
+            ` : ''}
             <button class="btn btn-secondary" onclick="closeModal('rfq-view-modal')">Close</button>
           </div>
         </div>
@@ -5153,6 +5247,37 @@
       const body = encodeURIComponent(`Hello ${vendor.contactPerson},\n\nPlease find attached Invoice Reference: ${inv.invoiceNumber} for the procurement services.\n\nBest Regards,\nBilling Department\nVendorBridge Inc.`);
       
       window.location.href = `mailto:${vendor.email}?subject=${subject}&body=${body}`;
+    }
+
+    function emailRFQ(rfqId) {
+      const rfqs = DB.get('vb_rfqs') || [];
+      const rfq = rfqs.find(r => r.id === rfqId);
+      if (!rfq) return;
+
+      const vendors = DB.get('vb_vendors') || [];
+      const invitedEmails = rfq.invitedVendors
+        .map(vid => vendors.find(v => v.id === vid))
+        .filter(v => v && v.email)
+        .map(v => v.email)
+        .join(',');
+
+      if (!invitedEmails) {
+        showToast('No invited vendors with valid emails found.', 'warning');
+        return;
+      }
+
+      const subject = encodeURIComponent(`Request For Quotation: ${rfq.title} (${rfq.rfqNumber})`);
+      const body = encodeURIComponent(
+        `Dear Partner,\n\n` +
+        `You have been invited to submit a quotation for: ${rfq.title} (${rfq.rfqNumber}).\n\n` +
+        `Description: ${rfq.description}\n` +
+        `Deadline: ${rfq.deadline}\n\n` +
+        `Please log in to the VendorBridge ERP portal to submit your quotation.\n\n` +
+        `Link: ${window.location.origin}${window.location.pathname}\n\n` +
+        `Best regards,\nProcurement Department`
+      );
+
+      window.location.href = `mailto:${invitedEmails}?subject=${subject}&body=${body}`;
     }
 
     Router.add('#/invoices', renderInvoices);
