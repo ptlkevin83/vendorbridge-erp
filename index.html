@@ -1957,6 +1957,10 @@
       resolve: () => {
         const hash = window.location.hash || '#/dashboard';
         const session = DB.get('vb_session');
+
+        // Close sidebar on mobile navigation automatically
+        const sb = document.getElementById('sidebar');
+        if (sb) sb.classList.remove('show');
         
         // Split out parameters (e.g. #/rfqs/compare?id=rfq1)
         const parts = hash.split('?');
@@ -2275,6 +2279,68 @@
         navigator.clipboard.writeText(copyText.value);
         showToast('Invitation credentials copied to clipboard!', 'success');
       }
+    }
+
+    function sendEmailWithModal(to, subject, body) {
+      // Create modal if it doesn't exist
+      let modal = document.getElementById('email-dispatch-modal');
+      if (!modal) {
+        modal = document.createElement('div');
+        modal.id = 'email-dispatch-modal';
+        modal.className = 'modal-overlay';
+        document.body.appendChild(modal);
+      }
+
+      const gmailUrl = `https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(to)}&su=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+      const mailtoUrl = `mailto:${to}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+
+      modal.innerHTML = `
+        <div class="modal-container" style="max-width: 500px;">
+          <div class="modal-header">
+            <h3 class="modal-title">📧 Email Dispatch Manager</h3>
+            <button class="modal-close" onclick="closeModal('email-dispatch-modal')">&times;</button>
+          </div>
+          <div class="modal-body" style="font-size: 0.9rem;">
+            <div style="background-color: rgba(135, 90, 123, 0.08); border-left: 4px solid var(--primary-purple); padding: 0.75rem; border-radius: 4px; margin-bottom: 1.25rem;">
+              <p><b>Recipient:</b> ${to}</p>
+              <p><b>Subject:</b> ${subject}</p>
+            </div>
+            
+            <p style="margin-bottom: 1rem; color: var(--text-muted); font-size: 0.85rem;">
+              This ERP runs in the browser. Select how you would like to send this email:
+            </p>
+
+            <div style="display: flex; flex-direction: column; gap: 0.75rem; margin-bottom: 1.25rem;">
+              <button class="btn btn-primary" onclick="window.open('${gmailUrl}', '_blank'); closeModal('email-dispatch-modal');" style="justify-content: flex-start; text-align: left; padding: 0.75rem 1rem;">
+                🌐 Send via Web Gmail (Opens in New Tab)
+              </button>
+              <button class="btn btn-outline" onclick="window.location.href='${mailtoUrl}'; closeModal('email-dispatch-modal');" style="justify-content: flex-start; text-align: left; padding: 0.75rem 1rem;">
+                💻 Send via Device Mail App (mailto link)
+              </button>
+              <button class="btn btn-outline" id="btn-dispatch-copy" style="justify-content: flex-start; text-align: left; padding: 0.75rem 1rem;">
+                📋 Copy Subject & Message to Clipboard
+              </button>
+            </div>
+
+            <div style="border-top: 1px solid var(--border-color); padding-top: 0.75rem; font-size: 0.8rem; color: var(--text-muted); display: flex; align-items: center; gap: 0.35rem;">
+              <span>ℹ️</span>
+              <span>This email is also logged in the **In-App Mailbox** under the recipient's account.</span>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button class="btn btn-secondary" onclick="closeModal('email-dispatch-modal')">Close</button>
+          </div>
+        </div>
+      `;
+
+      // Set copy button handler
+      document.getElementById('btn-dispatch-copy').onclick = () => {
+        const textToCopy = `To: ${to}\nSubject: ${subject}\n\n${body}`;
+        navigator.clipboard.writeText(textToCopy);
+        showToast('Email content copied to clipboard!', 'success');
+      };
+
+      openModal('email-dispatch-modal');
     }
 
     // Interactive Profile Modal
@@ -3370,10 +3436,9 @@
           DB.sendEmail(email, session.email, 'Welcome to VendorBridge ERP - Access Credentials', inviteText);
 
           // Set up email button
-          const subject = encodeURIComponent("Welcome to VendorBridge ERP - Access Credentials");
-          const body = encodeURIComponent(inviteText);
           document.getElementById('btn-send-invite-mail').onclick = () => {
-            window.location.href = `mailto:${email}?subject=${subject}&body=${body}`;
+            closeModal('vendor-invite-modal');
+            sendEmailWithModal(email, "Welcome to VendorBridge ERP - Access Credentials", inviteText);
           };
 
           // Delay slightly so that the vendor-modal closes first
@@ -5163,11 +5228,9 @@
       
       // Send in-app email
       DB.sendEmail(vendor.email, DB.get('vb_session').email, subject, mailBody);
-      showToast(`Purchase Order email simulated in-app!`, 'success');
       
-      const subjectEncoded = encodeURIComponent(subject);
-      const bodyEncoded = encodeURIComponent(mailBody);
-      window.location.href = `mailto:${vendor.email}?subject=${subjectEncoded}&body=${bodyEncoded}`;
+      // Dispatch email using manager modal
+      sendEmailWithModal(vendor.email, subject, mailBody);
     }
 
     Router.add('#/pos', renderPOs);
@@ -5379,11 +5442,9 @@
       
       // Send in-app email to procurement officer
       DB.sendEmail('officer@vendorbridge.com', vendor.email, subject, mailBody);
-      showToast(`Invoice submission email simulated in-app!`, 'success');
       
-      const subjectEncoded = encodeURIComponent(subject);
-      const bodyEncoded = encodeURIComponent(mailBody);
-      window.location.href = `mailto:officer@vendorbridge.com?subject=${subjectEncoded}&body=${bodyEncoded}`;
+      // Dispatch email using manager modal
+      sendEmailWithModal('officer@vendorbridge.com', subject, mailBody);
     }
 
     function emailRFQ(rfqId) {
@@ -5403,18 +5464,17 @@
         return;
       }
 
-      const subject = encodeURIComponent(`Request For Quotation: ${rfq.title} (${rfq.rfqNumber})`);
-      const body = encodeURIComponent(
-        `Dear Partner,\n\n` +
+      const subject = `Request For Quotation: ${rfq.title} (${rfq.rfqNumber})`;
+      const mailBody = `Dear Partner,\n\n` +
         `You have been invited to submit a quotation for: ${rfq.title} (${rfq.rfqNumber}).\n\n` +
         `Description: ${rfq.description}\n` +
         `Deadline: ${rfq.deadline}\n\n` +
         `Please log in to the VendorBridge ERP portal to submit your quotation.\n\n` +
         `Link: ${window.location.origin}${window.location.pathname}\n\n` +
-        `Best regards,\nProcurement Department`
-      );
+        `Best regards,\nProcurement Department`;
 
-      window.location.href = `mailto:${invitedEmails}?subject=${subject}&body=${body}`;
+      // Dispatch email using manager modal
+      sendEmailWithModal(invitedEmails, subject, mailBody);
     }
 
     Router.add('#/invoices', renderInvoices);
