@@ -4485,8 +4485,9 @@
           showToast(`RFQ ${dbRfqs[idx].rfqNumber} saved as ${statusType} successfully!`, 'success');
           
           if (statusType === 'Sent') {
-            // Send updated emails in-app
+            // Send updated emails in-app & via real email
             const vendors = DB.get('vb_vendors') || [];
+            const emailList = [];
             invitedVendors.forEach(vid => {
               const v = vendors.find(item => item.id === vid);
               if (v && v.email) {
@@ -4500,8 +4501,23 @@
                   `Procurement Department\n` +
                   `VendorBridge ERP`;
                 DB.sendEmail(v.email, session.email, `RFQ Update: ${title} (${dbRfqs[idx].rfqNumber})`, mailBody);
+                emailList.push(v.email);
               }
             });
+            if (emailList.length > 0) {
+              const joinedEmails = emailList.join(',');
+              const mailBody = `Dear Partner,\n\nThis is an update regarding the RFQ you were invited to:\n\n` +
+                `Title: ${title}\n` +
+                `Ref No: ${dbRfqs[idx].rfqNumber}\n` +
+                `Deadline: ${formatDate(deadlineVal)}\n` +
+                `Description: ${desc || 'N/A'}\n\n` +
+                `Please log in to the VendorBridge portal to review the updated details and submit/edit your quotation.\n\n` +
+                `Link: ${window.location.origin}${window.location.pathname}\n\n` +
+                `Best regards,\n` +
+                `Procurement Department\n` +
+                `VendorBridge ERP`;
+              sendEmailWithModal(joinedEmails, `RFQ Update: ${title} (${dbRfqs[idx].rfqNumber})`, mailBody);
+            }
           }
         }
       } else {
@@ -4545,8 +4561,9 @@
         if (statusType === 'Sent') {
           showToast(`RFQ ${rfqNum} sent to ${invitedVendors.length} vendors successfully!`, 'success');
           
-          // Send invite emails in-app
+          // Send invite emails in-app & via real email
           const vendors = DB.get('vb_vendors') || [];
+          const emailList = [];
           invitedVendors.forEach(vid => {
             const v = vendors.find(item => item.id === vid);
             if (v && v.email) {
@@ -4560,8 +4577,23 @@
                 `Procurement Department\n` +
                 `VendorBridge ERP`;
               DB.sendEmail(v.email, session.email, `Invitation to Bid: ${title} (${rfqNum})`, mailBody);
+              emailList.push(v.email);
             }
           });
+          if (emailList.length > 0) {
+            const joinedEmails = emailList.join(',');
+            const mailBody = `Dear Partner,\n\nYou have been invited to submit a quotation for a new RFQ:\n\n` +
+              `Title: ${title}\n` +
+              `Ref No: ${rfqNum}\n` +
+              `Deadline: ${formatDate(deadlineVal)}\n` +
+              `Description: ${desc || 'N/A'}\n\n` +
+              `Please log in to the VendorBridge portal to view details and submit your quotation pricing.\n\n` +
+              `Link: ${window.location.origin}${window.location.pathname}\n\n` +
+              `Best regards,\n` +
+              `Procurement Department\n` +
+              `VendorBridge ERP`;
+            sendEmailWithModal(joinedEmails, `Invitation to Bid: ${title} (${rfqNum})`, mailBody);
+          }
         } else {
           showToast(`RFQ ${rfqNum} saved as draft successfully!`, 'success');
         }
